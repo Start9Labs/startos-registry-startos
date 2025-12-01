@@ -7,10 +7,10 @@ export const setInterfaces = sdk.setupInterfaces(async ({ effects }) => {
     protocol: 'http',
   })
   const ui = sdk.createInterface(effects, {
-    name: 'Web UI',
-    id: 'ui',
-    description: 'The web interface of Hello World',
-    type: 'ui',
+    name: 'Web API',
+    id: 'api',
+    description: 'The web API of your custom registry.',
+    type: 'api',
     masked: false,
     schemeOverride: null,
     username: null,

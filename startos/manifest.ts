@@ -7,24 +7,25 @@ const architectures =
   BUILD === 'x86_64' || BUILD === 'aarch64' ? [BUILD] : ['x86_64', 'aarch64']
 
 export const manifest = setupManifest({
-  id: 'hello-world',
-  title: 'Hello World',
+  id: 'startos-registry',
+  title: 'StartOS Registry',
   license: 'MIT',
-  wrapperRepo: 'https://github.com/Start9Labs/hello-world-wrapper',
-  upstreamRepo: 'https://github.com/Start9Labs/hello-world',
-  supportSite: 'https://docs.start9.com/',
-  marketingSite: 'https://start9.com/',
+  wrapperRepo: 'https://github.com/Start9Labs/startos-registry-startos/',
+  upstreamRepo:
+    'https://github.com/Start9Labs/start-os/tree/master/core/startos/src/registry/',
+  supportSite: 'https://github.com/Start9Labs/start-os/issues',
+  marketingSite: 'https://github.com/Start9Labs/start-os/',
   donationUrl: 'https://donate.start9.com/',
   docsUrl:
-    'https://github.com/Start9Labs/hello-world-startos/blob/master/instructions.md',
+    'https://github.com/Start9Labs/startos-registry-startos/blob/master/instructions.md',
   description: {
-    short: 'Bare bones example of a StartOS service',
-    long: 'Hello World is a template service that provides examples of basic StartOS features.',
+    short: 'Host your own StartOS registry',
+    long: 'Curate a list of your favorite StartOS services and distribute to friends and family through your own registry.',
   },
   volumes: ['main'],
   images: {
-    'hello-world': {
-      source: { dockerTag: 'start9/hello-world' },
+    'startos-registry': {
+      source: { dockerTag: 'ghcr.io/start9labs/startos-registry' },
       arch: architectures,
     } as SDKImageInputSpec,
   },

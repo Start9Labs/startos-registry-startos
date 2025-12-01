@@ -7,7 +7,7 @@ export const main = sdk.setupMain(async ({ effects, started }) => {
    *
    * In this section, we fetch any resources or run any desired preliminary commands.
    */
-  console.info('Starting Hello World!')
+  console.info('Starting StartOS Registry!')
 
   /**
    * ======================== Daemons ========================
@@ -19,22 +19,22 @@ export const main = sdk.setupMain(async ({ effects, started }) => {
   return sdk.Daemons.of(effects, started).addDaemon('primary', {
     subcontainer: await sdk.SubContainer.of(
       effects,
-      { imageId: 'hello-world' },
+      { imageId: 'startos-registry' },
       sdk.Mounts.of().mountVolume({
         volumeId: 'main',
         subpath: null,
-        mountpoint: '/data',
+        mountpoint: '/var/lib/startos',
         readonly: false,
       }),
-      'hello-world-sub',
+      'startos-registry-sub',
     ),
-    exec: { command: ['hello-world'] },
+    exec: { command: ['startos-registry'] },
     ready: {
-      display: 'Web Interface',
+      display: 'Web API',
       fn: () =>
         sdk.healthCheck.checkPortListening(effects, uiPort, {
-          successMessage: 'The web interface is ready',
-          errorMessage: 'The web interface is not ready',
+          successMessage: 'The web API is ready',
+          errorMessage: 'The API is unreachable',
         }),
     },
     requires: [],
