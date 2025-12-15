@@ -1,5 +1,5 @@
 import { sdk } from './sdk'
-import { uiPort } from './utils'
+import { apiPort } from './utils'
 
 export const main = sdk.setupMain(async ({ effects, started }) => {
   /**
@@ -28,11 +28,11 @@ export const main = sdk.setupMain(async ({ effects, started }) => {
       }),
       'startos-registry-sub',
     ),
-    exec: { command: ['startos-registry'] },
+    exec: { command: ['start-registry'] },
     ready: {
       display: 'Web API',
       fn: () =>
-        sdk.healthCheck.checkPortListening(effects, uiPort, {
+        sdk.healthCheck.checkPortListening(effects, apiPort, {
           successMessage: 'The web API is ready',
           errorMessage: 'The API is unreachable',
         }),

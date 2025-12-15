@@ -1,12 +1,12 @@
 import { sdk } from './sdk'
-import { uiPort } from './utils'
+import { apiPort } from './utils'
 
 export const setInterfaces = sdk.setupInterfaces(async ({ effects }) => {
-  const uiMulti = sdk.MultiHost.of(effects, 'ui-multi')
-  const uiMultiOrigin = await uiMulti.bindPort(uiPort, {
+  const apiMulti = sdk.MultiHost.of(effects, 'api-multi')
+  const apiMultiOrigin = await apiMulti.bindPort(apiPort, {
     protocol: 'http',
   })
-  const ui = sdk.createInterface(effects, {
+  const api = sdk.createInterface(effects, {
     name: 'Web API',
     id: 'api',
     description: 'The web API of your custom registry.',
@@ -18,7 +18,7 @@ export const setInterfaces = sdk.setupInterfaces(async ({ effects }) => {
     query: {},
   })
 
-  const uiReceipt = await uiMultiOrigin.export([ui])
+  const apiReceipt = await apiMultiOrigin.export([api])
 
-  return [uiReceipt]
+  return [apiReceipt]
 })

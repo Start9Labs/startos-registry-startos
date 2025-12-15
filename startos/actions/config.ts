@@ -1,5 +1,4 @@
 import { sdk } from '../sdk'
-import { utils } from '@start9labs/start-sdk'
 
 const { InputSpec, Value } = sdk
 
@@ -58,14 +57,8 @@ export const config = sdk.Action.withInput(
       'get-info',
       async (sub) =>
         JSON.parse(
-          (
-            await sub.execFail([
-              'start-registry',
-              'registry',
-              'info',
-              '--format=json',
-            ])
-          ).stdout as string,
+          (await sub.execFail(['start-registry', 'info', '--format=json']))
+            .stdout as string,
         ),
     ),
 
@@ -77,21 +70,9 @@ export const config = sdk.Action.withInput(
       null,
       'set-info',
       async (sub) => {
-        await sub.execFail([
-          'start-registry',
-          'registry',
-          'info',
-          'set-name',
-          name,
-        ])
+        await sub.execFail(['start-registry', 'info', 'set-name', name])
         if (icon) {
-          await sub.execFail([
-            'start-registry',
-            'registry',
-            'info',
-            'set-icon',
-            icon,
-          ])
+          await sub.execFail(['start-registry', 'info', 'set-icon', icon])
         }
       },
     ),
