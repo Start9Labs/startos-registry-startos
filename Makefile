@@ -10,7 +10,7 @@ define SUMMARY
 	size=$$(du -h $(1) | awk '{print $$1}'); \
 	title=$$(printf '%s' "$$manifest" | jq -r .title); \
 	version=$$(printf '%s' "$$manifest" | jq -r .version); \
-	arches=$$(printf '%s' "$$manifest" | jq -r '.hardwareRequirements.arch | join(", ")'); \
+	arches=$$(printf '%s' "$$manifest" | jq -r '[.images[].arch // []] | flatten | unique | join(", ")'); \
 	sdkv=$$(printf '%s' "$$manifest" | jq -r .sdkVersion); \
 	gitHash=$$(printf '%s' "$$manifest" | jq -r .gitHash | sed -E 's/(.*-modified)$$/\x1b[0;31m\1\x1b[0m/'); \
 	printf "\n"; \
@@ -60,7 +60,7 @@ install: | check-deps check-init
 		echo "Error: No .s9pk file found. Run 'make' first."; \
 		exit 1; \
 	fi; \
-	echo "\n🚀 Installing $$S9PK to $$HOST ..."; \
+	printf "\n🚀 Installing %s to %s ...\n" "$$S9PK" "$$HOST"; \
 	start-cli package install -s "$$S9PK"
 
 check-deps:
@@ -86,4 +86,4 @@ package-lock.json: package.json
 
 clean:
 	@echo "Cleaning up build artifacts..."
-	@rm -rf $(PACKAGE_ID).s9pk $(PACKAGE_ID)_x86_64.s9pk $(PACKAGE_ID)_aarch64.s9pk javascript node_modules
+	@rm -rf $(PACKAGE_ID).s9pk $(PACKAGE_ID)_x86_64.s9pk $(PACKAGE_ID)_aarch64.s9pk $(PACKAGE_ID)_riscv64.s9pk javascript node_modules
