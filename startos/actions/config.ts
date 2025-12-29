@@ -35,7 +35,7 @@ export const config = sdk.Action.withInput(
     name: 'Configure Registry',
     description: 'Set the name, icon, and categories of your registry',
     warning: null,
-    allowedStatuses: 'any',
+    allowedStatuses: 'only-running',
     group: null,
     visibility: 'enabled',
   }),

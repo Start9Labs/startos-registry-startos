@@ -1,5 +1,5 @@
 import { sdk } from './sdk'
-import { apiPort } from './utils'
+import { apiPort, mountpoint } from './utils'
 
 export const main = sdk.setupMain(async ({ effects }) => {
   /**
@@ -19,16 +19,24 @@ export const main = sdk.setupMain(async ({ effects }) => {
   return sdk.Daemons.of(effects).addDaemon('primary', {
     subcontainer: await sdk.SubContainer.of(
       effects,
-      { imageId: 'startos-registry' },
-      sdk.Mounts.of().mountVolume({
-        volumeId: 'main',
-        subpath: null,
-        mountpoint: '/var/lib/startos',
-        readonly: false,
-      }),
+      { imageId: 'startos-registry', sharedRun: true },
+      sdk.Mounts.of()
+        .mountVolume({
+          volumeId: 'main',
+          subpath: null,
+          mountpoint,
+          readonly: false,
+        })
+        .mountVolume({
+          volumeId: 'config',
+          subpath: '/config.yaml',
+          mountpoint: '/etc/startos/config.yaml',
+          readonly: false,
+          type: 'file',
+        }),
       'startos-registry-sub',
     ),
-    exec: { command: ['start-registry'] },
+    exec: { command: ['start-registryd'] },
     ready: {
       display: 'Web API',
       fn: () =>

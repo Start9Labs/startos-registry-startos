@@ -16,19 +16,11 @@ export const manifest = setupManifest({
     short: 'Host your own StartOS registry',
     long: 'Curate a list of your favorite StartOS services and distribute to friends and family through your own registry.',
   },
-  volumes: ['main'],
+  volumes: ['config', 'main'],
   images: {
     'startos-registry': {
-      source: { dockerTag: 'ghcr.io/start9labs/startos-registry:3068-merge' },
+      source: { dockerTag: 'ghcr.io/start9labs/startos-registry:next-major' },
     },
-  },
-  alerts: {
-    install: null,
-    update: null,
-    uninstall: null,
-    restore: null,
-    start: null,
-    stop: null,
   },
   dependencies: {},
 })
