@@ -1,9 +1,9 @@
-import { z, FileHelper } from '@start9labs/start-sdk'
-import { apiPort, mountpoint } from '../utils'
+import { FileHelper, z } from '@start9labs/start-sdk'
 import { sdk } from '../sdk'
+import { apiPort, mountpoint } from '../utils'
 
 const registryListen = `0.0.0.0:${apiPort}`
-const torProxy = 'socks5h://10.0.3.1:9050'
+const torProxy = 'tor.startos:9050'
 
 const shape = z.object({
   'registry-hostname': z.array(z.string()).catch([]),

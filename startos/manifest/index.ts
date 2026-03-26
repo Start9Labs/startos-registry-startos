@@ -1,5 +1,5 @@
 import { setupManifest } from '@start9labs/start-sdk'
-import { short, long } from './i18n'
+import { long, short } from './i18n'
 
 export const manifest = setupManifest({
   id: 'startos-registry',
@@ -10,21 +10,16 @@ export const manifest = setupManifest({
     'https://github.com/Start9Labs/start-os/tree/master/core/startos/src/registry/',
   marketingUrl: 'https://github.com/Start9Labs/start-os/',
   donationUrl: 'https://donate.start9.com/',
-  docsUrls: [],
+  docsUrls: [
+    'https://docs.start9.com/start-os/cli-reference.html#s9pk-packaging',
+    'https://docs.start9.com/start-os/cli-reference.html#registry',
+  ],
   description: { short, long },
   volumes: ['config', 'main'],
   images: {
     'startos-registry': {
       source: { dockerTag: 'ghcr.io/start9labs/startos-registry:next-major' },
     },
-  },
-  alerts: {
-    install: null,
-    update: null,
-    uninstall: null,
-    restore: null,
-    start: null,
-    stop: null,
   },
   dependencies: {},
 })

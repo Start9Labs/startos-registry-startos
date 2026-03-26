@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="140" y1="110" x2="884" y2="914" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1E2740"/>
+      <stop offset="1" stop-color="#141B2D"/>
+    </linearGradient>
+    <filter id="shadow" x="110" y="110" width="804" height="804" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="14" stdDeviation="18" flood-color="#0D1220" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <!-- Icon background -->
+  <rect x="140" y="110" width="744" height="744" rx="120" fill="url(#bg)"/>
+  <rect x="140" y="110" width="744" height="744" rx="120" stroke="#0F1526" stroke-width="10"/>
+
+  <!-- Base shadow -->
+  <ellipse cx="512" cy="756" rx="315" ry="38" fill="#0E1424" opacity="0.78"/>
+
+  <!-- Bottom left box -->
+  <g filter="url(#shadow)">
+    <rect x="224" y="488" width="282" height="254" rx="28" fill="#4B3A78"/>
+    <rect x="224" y="488" width="282" height="254" rx="28" stroke="#2D234A" stroke-width="6"/>
+    <path d="M331 488h66v56l-33-16-33 16v-56z" fill="#C54B59"/>
+    <rect x="408" y="644" width="60" height="14" rx="7" fill="#2E2451" opacity="0.9"/>
+    <rect x="411" y="670" width="58" height="12" rx="6" fill="#2E2451" opacity="0.9"/>
+  </g>
+
+  <!-- Bottom right box -->
+  <g filter="url(#shadow)">
+    <rect x="518" y="488" width="282" height="254" rx="28" fill="#D9742E"/>
+    <rect x="518" y="488" width="282" height="254" rx="28" stroke="#9E4F1E" stroke-width="6"/>
+    <path d="M625 488h66v56l-33-16-33 16v-56z" fill="#2E58A6"/>
+    <rect x="702" y="644" width="60" height="14" rx="7" fill="#8E4519" opacity="0.9"/>
+    <rect x="705" y="670" width="58" height="12" rx="6" fill="#8E4519" opacity="0.9"/>
+  </g>
+
+  <!-- Top box -->
+  <g filter="url(#shadow)">
+    <rect x="377" y="244" width="270" height="226" rx="28" fill="#3D7A84"/>
+    <rect x="377" y="244" width="270" height="226" rx="28" stroke="#25525A" stroke-width="6"/>
+    <path d="M479 244h66v60l-33-16-33 16v-60z" fill="#E3AB2F"/>
+    <rect x="536" y="391" width="62" height="14" rx="7" fill="#28545D" opacity="0.92"/>
+    <rect x="552" y="417" width="62" height="12" rx="6" fill="#28545D" opacity="0.92"/>
+  </g>
+</svg>

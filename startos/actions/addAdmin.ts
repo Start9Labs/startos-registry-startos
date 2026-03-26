@@ -35,8 +35,7 @@ export const inputSpec = InputSpec.of({
             placeholder: '@user:domain.com',
             patterns: [
               {
-                regex:
-                  '^@([a-zA-Z0-9_.-]+):([a-zA-Z0-9.-]+\\.[a-zA-Z]{2,})$',
+                regex: '^@([a-zA-Z0-9_.-]+):([a-zA-Z0-9.-]+\\.[a-zA-Z]{2,})$',
                 description: i18n(
                   'Must be a valid matrix username (e.g. @user:domain.com)',
                 ),
@@ -51,8 +50,12 @@ export const inputSpec = InputSpec.of({
     name: i18n('Public Key'),
     default: null,
     required: true,
-    // @TODO
-    // patterns: [utils.Patterns.pemPublicKey],
+    patterns: [
+      {
+        regex: utils.regexes.pem('PUBLIC KEY').asExpr(),
+        description: 'Must be a valid PEM encoded public key',
+      },
+    ],
   }),
 })
 
