@@ -1,23 +1,24 @@
 import { utils } from '@start9labs/start-sdk'
+import { i18n } from '../i18n'
 import { sdk } from '../sdk'
 
 const { InputSpec, Value, Variants } = sdk
 
 export const inputSpec = InputSpec.of({
   name: Value.text({
-    name: 'Label',
+    name: i18n('Label'),
     default: null,
     required: true,
   }),
   contact: Value.union({
-    name: 'Contact',
+    name: i18n('Contact'),
     default: 'email',
     variants: Variants.of({
       email: {
-        name: 'Email',
+        name: i18n('Email'),
         spec: sdk.InputSpec.of({
           address: Value.text({
-            name: 'Email',
+            name: i18n('Email'),
             default: null,
             required: true,
             patterns: [utils.Patterns.email],
@@ -25,18 +26,20 @@ export const inputSpec = InputSpec.of({
         }),
       },
       matrix: {
-        name: 'Matrix',
+        name: i18n('Matrix'),
         spec: sdk.InputSpec.of({
           username: Value.text({
-            name: 'Username',
+            name: i18n('Username'),
             default: null,
             required: true,
             placeholder: '@user:domain.com',
             patterns: [
               {
-                regex: '^@([a-zA-Z0-9_.-]+):([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})$',
-                description:
+                regex:
+                  '^@([a-zA-Z0-9_.-]+):([a-zA-Z0-9.-]+\\.[a-zA-Z]{2,})$',
+                description: i18n(
                   'Must be a valid matrix username (e.g. @user:domain.com)',
+                ),
               },
             ],
           }),
@@ -45,7 +48,7 @@ export const inputSpec = InputSpec.of({
     }),
   }),
   key: Value.textarea({
-    name: 'Public Key',
+    name: i18n('Public Key'),
     default: null,
     required: true,
     // @TODO
@@ -59,8 +62,8 @@ export const addAdmin = sdk.Action.withInput(
 
   // metadata
   async ({ effects }) => ({
-    name: 'Add Administrator',
-    description: 'Add an admin to this registry',
+    name: i18n('Add Administrator'),
+    description: i18n('Add an admin to this registry'),
     warning: null,
     allowedStatuses: 'only-running',
     group: null,

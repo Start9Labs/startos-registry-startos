@@ -1,21 +1,10 @@
+import { i18n } from './i18n'
 import { sdk } from './sdk'
 import { apiPort, mountpoint } from './utils'
 
 export const main = sdk.setupMain(async ({ effects }) => {
-  /**
-   * ======================== Setup (optional) ========================
-   *
-   * In this section, we fetch any resources or run any desired preliminary commands.
-   */
-  console.info('Starting StartOS Registry!')
+  console.info(i18n('Starting StartOS Registry!'))
 
-  /**
-   * ======================== Daemons ========================
-   *
-   * In this section, we create one or more daemons that define the service runtime.
-   *
-   * Each daemon defines its own health check, which can optionally be exposed to the user.
-   */
   return sdk.Daemons.of(effects).addDaemon('primary', {
     subcontainer: await sdk.SubContainer.of(
       effects,
@@ -38,11 +27,11 @@ export const main = sdk.setupMain(async ({ effects }) => {
     ),
     exec: { command: ['start-registryd'] },
     ready: {
-      display: 'Web API',
+      display: i18n('Web API'),
       fn: () =>
         sdk.healthCheck.checkPortListening(effects, apiPort, {
-          successMessage: 'The web API is ready',
-          errorMessage: 'The API is unreachable',
+          successMessage: i18n('The web API is ready'),
+          errorMessage: i18n('The API is unreachable'),
         }),
     },
     requires: [],

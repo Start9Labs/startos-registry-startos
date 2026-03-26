@@ -1,3 +1,4 @@
+import { i18n } from '../i18n'
 import { sdk } from '../sdk'
 
 const { InputSpec, Value } = sdk
@@ -33,7 +34,7 @@ export const inputSpec = InputSpec.of({
     )
 
     return {
-      name: 'Users',
+      name: i18n('Users'),
       default: Object.keys(users).at(-1) || '',
       values: Object.entries(users).reduce(
         (obj, [id, user]) => ({
@@ -52,8 +53,8 @@ export const removeAdmin = sdk.Action.withInput(
 
   // metadata
   async ({ effects }) => ({
-    name: 'Remove Administrator',
-    description: 'Remove an administrator from this registry',
+    name: i18n('Remove Administrator'),
+    description: i18n('Remove an administrator from this registry'),
     warning: null,
     allowedStatuses: 'only-running',
     group: null,

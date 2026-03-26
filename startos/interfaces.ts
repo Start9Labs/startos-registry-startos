@@ -1,3 +1,4 @@
+import { i18n } from './i18n'
 import { sdk } from './sdk'
 import { apiPort } from './utils'
 
@@ -7,9 +8,9 @@ export const setInterfaces = sdk.setupInterfaces(async ({ effects }) => {
     protocol: 'http',
   })
   const api = sdk.createInterface(effects, {
-    name: 'Web API',
+    name: i18n('Web API'),
     id: 'api',
-    description: 'The web API of your custom registry.',
+    description: i18n('The web API of your custom registry.'),
     type: 'api',
     masked: false,
     schemeOverride: null,

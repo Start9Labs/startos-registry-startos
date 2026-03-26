@@ -1,19 +1,18 @@
-import { matches, FileHelper } from '@start9labs/start-sdk'
+import { z, FileHelper } from '@start9labs/start-sdk'
 import { apiPort, mountpoint } from '../utils'
-
-const { object, string, arrayOf, literal } = matches
+import { sdk } from '../sdk'
 
 const registryListen = `0.0.0.0:${apiPort}`
 const torProxy = 'socks5h://10.0.3.1:9050'
 
-const shape = object({
-  'registry-hostname': arrayOf(string).onMismatch([]),
-  'registry-listen': literal(registryListen).onMismatch(registryListen),
-  'tor-proxy': literal(torProxy).onMismatch(torProxy),
-  datadir: literal(mountpoint).onMismatch(mountpoint),
+const shape = z.object({
+  'registry-hostname': z.array(z.string()).catch([]),
+  'registry-listen': z.literal(registryListen).catch(registryListen),
+  'tor-proxy': z.literal(torProxy).catch(torProxy),
+  datadir: z.literal(mountpoint).catch(mountpoint),
 })
 
 export const configYaml = FileHelper.yaml(
-  { volumeId: 'config', subpath: './config.yaml' },
+  { base: sdk.volumes.config, subpath: './config.yaml' },
   shape,
 )

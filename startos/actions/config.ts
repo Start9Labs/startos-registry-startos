@@ -1,24 +1,26 @@
+import { i18n } from '../i18n'
 import { sdk } from '../sdk'
 
 const { InputSpec, Value } = sdk
 
 export const inputSpec = InputSpec.of({
   name: Value.text({
-    name: 'Registry Name',
+    name: i18n('Registry Name'),
     default: null,
     required: true,
     maxLength: 32,
   }),
   icon: Value.text({
-    name: 'Registry Icon',
+    name: i18n('Registry Icon'),
     default: null,
     required: false,
     placeholder: 'data:image/png,abc123',
     patterns: [
       {
         regex: '^data:image/[a-z-]+;base64,[a-zA-Z0-9+/]*$',
-        description:
+        description: i18n(
           'Must be a valid data URL (e.g. data:image/png;base64,abc123...)',
+        ),
       },
     ],
   }),
@@ -32,8 +34,10 @@ export const config = sdk.Action.withInput(
 
   // metadata
   async ({ effects }) => ({
-    name: 'Configure Registry',
-    description: 'Set the name, icon, and categories of your registry',
+    name: i18n('Configure Registry'),
+    description: i18n(
+      'Set the name, icon, and categories of your registry',
+    ),
     warning: null,
     allowedStatuses: 'only-running',
     group: null,

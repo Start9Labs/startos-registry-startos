@@ -6,7 +6,7 @@ export const setHostnames = sdk.setupOnInit(async (effects) => {
   const allHostnames =
     iface?.addressInfo?.nonLocal
       .format('hostname-info')
-      .map((h) => h.hostname.value) || []
+      .map((h) => h.hostname) || []
 
   const currentHostnames =
     (await configYaml.read((c) => c['registry-hostname']).once()) || []
