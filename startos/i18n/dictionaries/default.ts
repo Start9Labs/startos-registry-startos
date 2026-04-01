@@ -15,7 +15,7 @@ const dict = {
   'Set the name, icon, and categories of your registry': 6,
   'Registry Name': 7,
   'Registry Icon': 8,
-  'Must be a valid data URL (e.g. data:image/png;base64,abc123...)': 9,
+  'Must be a valid data URL or http(s) URL (e.g. data:image/png;base64,abc123... or https://example.com/icon.png)': 9,
 
   // actions/addAdmin.ts
   'Add Administrator': 10,

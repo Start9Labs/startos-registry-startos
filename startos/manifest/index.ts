@@ -18,7 +18,7 @@ export const manifest = setupManifest({
   volumes: ['config', 'main'],
   images: {
     'startos-registry': {
-      source: { dockerTag: 'ghcr.io/start9labs/startos-registry:next-major' },
+      source: { dockerTag: 'ghcr.io/start9labs/startos-registry:master' },
     },
   },
   dependencies: {},

@@ -14,12 +14,13 @@ export const inputSpec = InputSpec.of({
     name: i18n('Registry Icon'),
     default: null,
     required: false,
-    placeholder: 'data:image/png,abc123',
+    placeholder: 'data:image/png;base64,abc123',
     patterns: [
       {
-        regex: '^data:image/[a-z-]+;base64,[a-zA-Z0-9+/]*$',
+        regex:
+          '^(data:image/[a-z-]+;base64,[a-zA-Z0-9+/]*={0,2}|https?://.+)$',
         description: i18n(
-          'Must be a valid data URL (e.g. data:image/png;base64,abc123...)',
+          'Must be a valid data URL or http(s) URL (e.g. data:image/png;base64,abc123... or https://example.com/icon.png)',
         ),
       },
     ],
