@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="icon.svg" alt="StartOS Registry Logo" width="21%">
+</p>
+
 # StartOS Registry on StartOS
 
 > **Upstream docs:** <https://docs.start9.com/start-os/cli-reference.html#s9pk-packaging> | <https://docs.start9.com/start-os/cli-reference.html#registry>
@@ -25,6 +29,7 @@ The upstream source lives in the [StartOS monorepo](https://github.com/Start9Lab
 - [Actions (StartOS UI)](#actions-startos-ui)
 - [Backups and Restore](#backups-and-restore)
 - [Health Checks](#health-checks)
+- [Dependencies](#dependencies)
 - [Limitations and Differences](#limitations-and-differences)
 - [What Is Unchanged from Upstream](#what-is-unchanged-from-upstream)
 - [Contributing](#contributing)
@@ -36,7 +41,7 @@ The upstream source lives in the [StartOS monorepo](https://github.com/Start9Lab
 
 | Property      | Value                                               |
 | ------------- | --------------------------------------------------- |
-| Image source  | `ghcr.io/start9labs/startos-registry:next-major`    |
+| Image source  | `ghcr.io/start9labs/startos-registry`               |
 | Architectures | x86_64, aarch64, riscv64                            |
 | Entrypoint    | `start-registryd` (upstream default)                |
 
@@ -117,6 +122,10 @@ Both the `config` and `main` volumes are included in backups. Restoring a backup
 | -------- | -------------- | ----------------------- | ------------------------- |
 | Web API  | TCP port 5959  | "The web API is ready"  | "The API is unreachable"  |
 
+## Dependencies
+
+None.
+
 ## Limitations and Differences
 
 1. **CLI only.** There is no web UI. All registry management beyond the three StartOS actions (configure, add admin, remove admin) must be done via `start-cli registry` and `start-cli s9pk`.
@@ -136,14 +145,7 @@ Both the `config` and `main` volumes are included in backups. Restoring a backup
 
 ## Contributing
 
-See the [packaging guide](https://docs.start9.com/packaging/) for environment setup and build instructions. The source is at <https://github.com/Start9Labs/startos-registry-startos/>.
-
-To build from source:
-
-1. Set up your [environment](https://docs.start9.com/packaging/environment-setup.html).
-2. Clone this repository and `cd` into it.
-3. Run `make`.
-4. The resulting `.s9pk` can be sideloaded into StartOS.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for build instructions and development workflow.
 
 ---
 
@@ -151,8 +153,7 @@ To build from source:
 
 ```yaml
 package_id: startos-registry
-upstream_version: 0.4.0
-image: ghcr.io/start9labs/startos-registry:next-major
+image: ghcr.io/start9labs/startos-registry
 architectures: [x86_64, aarch64, riscv64]
 volumes:
   config: /etc/startos/config.yaml
