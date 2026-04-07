@@ -10,10 +10,7 @@ export const manifest = setupManifest({
     'https://github.com/Start9Labs/start-os/tree/master/core/startos/src/registry/',
   marketingUrl: 'https://github.com/Start9Labs/start-os/',
   donationUrl: 'https://donate.start9.com/',
-  docsUrls: [
-    'https://docs.start9.com/start-os/cli-reference.html#s9pk-packaging',
-    'https://docs.start9.com/start-os/cli-reference.html#registry',
-  ],
+  docsUrls: ['https://docs.start9.com/start-os/cli-reference.html'],
   description: { short, long },
   volumes: ['config', 'main'],
   images: {
