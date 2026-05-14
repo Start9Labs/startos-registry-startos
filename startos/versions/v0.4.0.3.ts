@@ -1,0 +1,16 @@
+import { VersionInfo, IMPOSSIBLE } from '@start9labs/start-sdk'
+
+export const v_0_4_0_3 = VersionInfo.of({
+  version: '0.4.0:3',
+  releaseNotes: {
+    en_US: 'Internal updates (start-sdk 1.5.1)',
+    es_ES: 'Actualizaciones internas (start-sdk 1.5.1)',
+    de_DE: 'Interne Aktualisierungen (start-sdk 1.5.1)',
+    pl_PL: 'Aktualizacje wewnętrzne (start-sdk 1.5.1)',
+    fr_FR: 'Mises à jour internes (start-sdk 1.5.1)',
+  },
+  migrations: {
+    up: async ({ effects }) => {},
+    down: IMPOSSIBLE,
+  },
+})
