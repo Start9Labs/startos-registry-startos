@@ -6,7 +6,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
   console.info(i18n('Starting StartOS Registry!'))
 
   return sdk.Daemons.of(effects).addDaemon('primary', {
-    subcontainer: await sdk.SubContainer.of(
+    subcontainer: sdk.SubContainer.of(
       effects,
       { imageId: 'startos-registry', sharedRun: true },
       sdk.Mounts.of()
