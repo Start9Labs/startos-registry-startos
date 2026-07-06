@@ -3,12 +3,13 @@ import { sdk } from '../sdk'
 import { apiPort, mountpoint } from '../utils'
 
 const registryListen = `0.0.0.0:${apiPort}`
-const torProxy = 'tor.startos:9050'
 
 const shape = z.object({
   'registry-hostname': z.array(z.string()).catch([]),
   'registry-listen': z.literal(registryListen).catch(registryListen),
-  'tor-proxy': z.literal(torProxy).catch(torProxy),
+  // Written reactively in main from Tor's SOCKS bridge address; the loopback
+  // placeholder holds until main heals it (a dead proxy just refuses).
+  'tor-proxy': z.string().catch('127.0.0.1:9050'),
   datadir: z.literal(mountpoint).catch(mountpoint),
 })
 
