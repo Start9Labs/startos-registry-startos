@@ -7,9 +7,9 @@ const registryListen = `0.0.0.0:${apiPort}`
 const shape = z.object({
   'registry-hostname': z.array(z.string()).catch([]),
   'registry-listen': z.literal(registryListen).catch(registryListen),
-  // Written reactively in main from Tor's SOCKS bridge address; the loopback
-  // placeholder holds until main heals it (a dead proxy just refuses).
-  'tor-proxy': z.string().catch('127.0.0.1:9050'),
+  // Written reactively in main from Tor's SOCKS bridge address; absent until
+  // main resolves and writes it.
+  'tor-proxy': z.string().optional().catch(undefined),
   datadir: z.literal(mountpoint).catch(mountpoint),
 })
 
