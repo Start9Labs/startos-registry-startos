@@ -69,7 +69,7 @@ Complete both tasks before the registry is ready for use.
 | ---------------------------------------- | ------------------------------------------------------- |
 | Registry hostnames (synced automatically from interface addresses) | Package index (add/remove via `start-cli registry`) |
 | Listen address (`0.0.0.0:5959`)          | Admin signers and permissions                           |
-| Tor proxy (`tor.startos:9050`)           | Package categories and mirrors                          |
+| Tor proxy (resolved from Tor's SOCKS bridge address) | Package categories and mirrors                          |
 | Data directory (`/var/lib/startos`)       | OS version registry                                     |
 | Registry name and icon (via action)       |                                                         |
 

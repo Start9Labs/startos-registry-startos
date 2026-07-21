@@ -17,8 +17,7 @@ export const inputSpec = InputSpec.of({
     placeholder: 'data:image/png;base64,abc123',
     patterns: [
       {
-        regex:
-          '^(data:image/[a-z-]+;base64,[a-zA-Z0-9+/]*={0,2}|https?://.+)$',
+        regex: '^(data:image/[a-z-]+;base64,[a-zA-Z0-9+/]*={0,2}|https?://.+)$',
         description: i18n(
           'Must be a valid data URL or http(s) URL (e.g. data:image/png;base64,abc123... or https://example.com/icon.png)',
         ),
@@ -36,9 +35,7 @@ export const config = sdk.Action.withInput(
   // metadata
   async ({ effects }) => ({
     name: i18n('Configure Registry'),
-    description: i18n(
-      'Set the name, icon, and categories of your registry',
-    ),
+    description: i18n('Set the name, icon, and categories of your registry'),
     warning: null,
     allowedStatuses: 'only-running',
     group: null,

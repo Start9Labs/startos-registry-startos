@@ -1,12 +1,22 @@
 import { configYaml } from '../fileModels/config.yaml'
+import { apiHostId, apiInterfaceId } from '../interfaces'
 import { sdk } from '../sdk'
 
 export const setHostnames = sdk.setupOnInit(async (effects) => {
-  const iface = await sdk.serviceInterface.getOwn(effects, 'api').const()
-  const allHostnames =
-    iface?.addressInfo?.nonLocal
-      .format('hostname-info')
-      .map((h) => h.hostname) || []
+  const allHostnames = await sdk.host
+    .getOwn(effects, apiHostId, (host) => {
+      const iface =
+        host &&
+        Object.values(host.bindings)
+          .flatMap((b) => Object.values(b.interfaces))
+          .find((i) => i.id === apiInterfaceId)
+      return (
+        iface?.addressInfo.nonLocal
+          .format('hostname-info')
+          .map((h) => h.hostname) || []
+      )
+    })
+    .const()
 
   const currentHostnames =
     (await configYaml.read((c) => c['registry-hostname']).once()) || []
