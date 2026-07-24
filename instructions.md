@@ -22,7 +22,7 @@ After install you'll see two critical tasks. The registry can't be used until bo
 
 ### Publishing and curating packages
 
-From a workstation with `start-cli` and the admin's private key, point `start-cli` at the Web API address shown on the interface and use the `start-cli registry` subcommands to add packages, categories, mirrors, and OS versions, and to sign releases. The CLI is the only way to do this — the registry has no browser UI.
+From a workstation with `start-cli` (1.1.0 or newer) and the admin's private key, point `start-cli` at the Web API address shown on the interface and use the `start-cli registry` subcommands to add packages, categories, mirrors, and OS versions, and to sign releases. The CLI is the only way to do this — the registry has no browser UI. Admin operations are authenticated with a per-request signature, so an older `start-cli` will be rejected.
 
 ### Subscribing other servers
 

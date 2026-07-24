@@ -15,7 +15,7 @@ A self-hosted package registry for StartOS. Curate a list of your favorite Start
 
 StartOS is designed around an open registry model: anyone, anywhere can establish their own registry. No single entity controls which services are available, and no service can be effectively censored. Users choose which registries to trust, and services can be distributed through multiple independent registries, direct file transfer, or built from source. By running your own registry, you become a distribution point in this decentralized ecosystem.
 
-The upstream source lives in the [StartOS monorepo](https://github.com/Start9Labs/start-os/tree/master/core/startos/src/registry/).
+The upstream source lives in the [StartOS monorepo](https://github.com/Start9Labs/start-os/tree/master/projects/start-registry/). The registry server (`start-registry`) is versioned independently of the StartOS platform, starting at `1.0.0`.
 
 ---
 
@@ -128,7 +128,7 @@ None.
 
 ## Limitations and Differences
 
-1. **CLI only.** There is no web UI. All registry management beyond the three StartOS actions (configure, add admin, remove admin) must be done via `start-cli registry` and `start-cli s9pk`.
+1. **CLI only.** There is no web UI. All registry management beyond the three StartOS actions (configure, add admin, remove admin) must be done via `start-cli registry` and `start-cli s9pk`. Admin and signer requests use the request-signature auth scheme introduced in `start-registry` 1.0.0, so a managing workstation needs `start-cli` 1.1.0 or newer.
 2. **No GUI for package management.** Adding, removing, categorizing, and signing packages requires CLI access.
 3. **No built-in S3 publishing.** Package distribution relies on the registry API; S3 mirror configuration is done externally.
 4. **Categories are not yet configurable via actions.** The Configure Registry action has a placeholder for category management that is not yet implemented.
