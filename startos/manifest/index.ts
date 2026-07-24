@@ -7,7 +7,7 @@ export const manifest = setupManifest({
   license: 'MIT',
   packageRepo: 'https://github.com/Start9Labs/startos-registry-startos/',
   upstreamRepo:
-    'https://github.com/Start9Labs/start-os/tree/master/core/startos/src/registry/',
+    'https://github.com/Start9Labs/start-os/tree/master/projects/start-registry/',
   marketingUrl: 'https://github.com/Start9Labs/start-os/',
   donationUrl: 'https://donate.start9.com/',
   description: { short, long },

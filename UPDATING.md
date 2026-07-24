@@ -1,15 +1,24 @@
 # Updating the upstream version
 
-This is a Start9 Labs first-party package. The registry source lives in the [StartOS monorepo](https://github.com/Start9Labs/start-os/tree/master/core/startos/src/registry/) and ships as the prebuilt `ghcr.io/start9labs/startos-registry` image. There is no Dockerfile in this repo; the package pulls the upstream image straight from GHCR. The image tag is currently pinned to `:master`, so "bumping" usually means re-pointing at a new commit/tag once StartOS itself ships a release that affects the registry.
+This is a Start9 Labs first-party package. The registry server (`start-registry`) lives in the [StartOS monorepo](https://github.com/Start9Labs/start-os/tree/master/projects/start-registry/) and ships as the prebuilt `ghcr.io/start9labs/startos-registry` image. There is no Dockerfile in this repo; the package pulls the upstream image straight from GHCR.
+
+`start-registry` is versioned **independently** of the StartOS platform (starting at `1.0.0`); its version lives in `projects/start-registry/Cargo.toml` and is cut as a `start-registry/vX.Y.Z` git tag. The package `version` in `startos/versions/current.ts` tracks that number.
+
+The image is pinned to `:master`. CI only publishes `:master` (and per-PR `:<n>-merge`) tags — there is no per-release image tag — so `:master` is the tip of `start-registry` and carries whatever version `Cargo.toml` declares. "Bumping" therefore means re-pointing the package `version` at the registry's current release once the monorepo ships one.
 
 ## Determining the upstream version
 
-- **StartOS** ([Start9Labs/start-os](https://github.com/Start9Labs/start-os)) — latest release:
+- **start-registry** — latest released version:
   ```
-  gh release view -R Start9Labs/start-os --json tagName -q .tagName
+  git ls-remote --tags https://github.com/Start9Labs/start-os.git 'refs/tags/start-registry/*'
   ```
-  The image tag pin lives in `startos/manifest/index.ts` (`images['startos-registry'].source.dockerTag`).
+  or read it directly from the manifest:
+  ```
+  gh api repos/Start9Labs/start-os/contents/projects/start-registry/Cargo.toml?ref=master \
+    --jq '.content' | base64 -d | grep '^version'
+  ```
 
 ## Applying the bump
 
-- **StartOS** — edit `startos/manifest/index.ts` and set `images['startos-registry'].source.dockerTag` to `ghcr.io/start9labs/startos-registry:<new tag>` (or leave it at `:master` to continue tracking the tip of the upstream branch).
+- Edit `startos/versions/current.ts` and set `version` to `<registry version>:0` (matching the newest `start-registry` release), then write release notes for what that release changed (see `projects/start-registry/CHANGELOG.md`).
+- Leave `images['startos-registry'].source.dockerTag` at `ghcr.io/start9labs/startos-registry:master` — no semver image tag is published, and `:master` already carries the released version.
