@@ -2,7 +2,7 @@ import { socksHostId, socksPort } from 'tor-startos/startos/utils'
 import { configYaml } from './fileModels/config.yaml'
 import { i18n } from './i18n'
 import { sdk } from './sdk'
-import { apiPort, bridgeAddress, mountpoint } from './utils'
+import { apiPort, mountpoint } from './utils'
 
 export const main = sdk.setupMain(async ({ effects }) => {
   console.info(i18n('Starting StartOS Registry!'))
@@ -12,12 +12,14 @@ export const main = sdk.setupMain(async ({ effects }) => {
   // fallback keeps it constant while tor is absent, so this .const() never
   // restarts the registry on tor churn. A dead proxy just connection-refuses,
   // which the registry tolerates.
-  const torProxy = await bridgeAddress(effects, {
-    packageId: 'tor',
-    hostId: socksHostId,
-    internalPort: socksPort,
-    fallbackPort: socksPort,
-  }).const()
+  const torProxy = await sdk.host
+    .getBridgeAddress(effects, {
+      packageId: 'tor',
+      hostId: socksHostId,
+      internalPort: socksPort,
+      fallbackPort: socksPort,
+    })
+    .const()
   await configYaml.merge(effects, { 'tor-proxy': torProxy })
 
   return sdk.Daemons.of(effects).addDaemon('primary', {
