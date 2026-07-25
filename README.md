@@ -39,20 +39,20 @@ The upstream source lives in the [StartOS monorepo](https://github.com/Start9Lab
 
 ## Image and Container Runtime
 
-| Property      | Value                                               |
-| ------------- | --------------------------------------------------- |
-| Image source  | `ghcr.io/start9labs/startos-registry`               |
-| Architectures | x86_64, aarch64, riscv64                            |
-| Entrypoint    | `start-registryd` (upstream default)                |
+| Property      | Value                                 |
+| ------------- | ------------------------------------- |
+| Image source  | `ghcr.io/start9labs/startos-registry` |
+| Architectures | x86_64, aarch64, riscv64              |
+| Entrypoint    | `start-registryd` (upstream default)  |
 
 The package uses the upstream image unmodified.
 
 ## Volume and Data Layout
 
-| Volume   | Mount Point              | Purpose                         |
-| -------- | ------------------------ | ------------------------------- |
-| `config` | `/etc/startos/config.yaml` (file mount) | Registry configuration |
-| `main`   | `/var/lib/startos`       | Registry data directory         |
+| Volume   | Mount Point                             | Purpose                 |
+| -------- | --------------------------------------- | ----------------------- |
+| `config` | `/etc/startos/config.yaml` (file mount) | Registry configuration  |
+| `main`   | `/var/lib/startos`                      | Registry data directory |
 
 ## Installation and First-Run Flow
 
@@ -65,20 +65,20 @@ Complete both tasks before the registry is ready for use.
 
 ## Configuration Management
 
-| StartOS-Managed                          | Upstream-Managed                                        |
-| ---------------------------------------- | ------------------------------------------------------- |
+| StartOS-Managed                                                    | Upstream-Managed                                    |
+| ------------------------------------------------------------------ | --------------------------------------------------- |
 | Registry hostnames (synced automatically from interface addresses) | Package index (add/remove via `start-cli registry`) |
-| Listen address (`0.0.0.0:5959`)          | Admin signers and permissions                           |
-| Tor proxy (resolved from Tor's SOCKS bridge address) | Package categories and mirrors                          |
-| Data directory (`/var/lib/startos`)       | OS version registry                                     |
-| Registry name and icon (via action)       |                                                         |
+| Listen address (`0.0.0.0:5959`)                                    | Admin signers and permissions                       |
+| Tor proxy (resolved from Tor's SOCKS bridge address)               | Package categories and mirrors                      |
+| Data directory (`/var/lib/startos`)                                | OS version registry                                 |
+| Registry name and icon (via action)                                |                                                     |
 
 Hostnames are synced automatically: when the service's network addresses change, the `registry-hostname` list in `config.yaml` is updated to match.
 
 ## Network Access and Interfaces
 
-| Interface | Port | Protocol | Purpose                                |
-| --------- | ---- | -------- | -------------------------------------- |
+| Interface | Port | Protocol | Purpose                                     |
+| --------- | ---- | -------- | ------------------------------------------- |
 | `api`     | 5959 | HTTP     | Web API for registry queries and management |
 
 The API is exposed via a multi-host binding, accessible over LAN, .local, and .onion addresses. There is no browser UI -- all interaction is through the API and CLI.
@@ -91,8 +91,8 @@ The API is exposed via a multi-host binding, accessible over LAN, .local, and .o
 - **Availability:** Only while running
 - **Visibility:** Enabled
 - **Inputs:**
-  - *Registry Name* (required, max 32 characters)
-  - *Registry Icon* (optional, base64 data URL)
+  - _Registry Name_ (required, max 32 characters)
+  - _Registry Icon_ (optional, base64 data URL)
 
 ### Add Administrator
 
@@ -100,9 +100,9 @@ The API is exposed via a multi-host binding, accessible over LAN, .local, and .o
 - **Availability:** Only while running
 - **Visibility:** Enabled
 - **Inputs:**
-  - *Label* (required) -- display name for the admin
-  - *Contact* (required) -- email address or Matrix username (e.g. `@user:domain.com`)
-  - *Public Key* (required) -- PEM-encoded public key
+  - _Label_ (required) -- display name for the admin
+  - _Contact_ (required) -- email address or Matrix username (e.g. `@user:domain.com`)
+  - _Public Key_ (required) -- PEM-encoded public key
 
 ### Remove Administrator
 
@@ -110,7 +110,7 @@ The API is exposed via a multi-host binding, accessible over LAN, .local, and .o
 - **Availability:** Only while running
 - **Visibility:** Enabled
 - **Inputs:**
-  - *Users* (required) -- select from the current list of admins
+  - _Users_ (required) -- select from the current list of admins
 
 ## Backups and Restore
 
@@ -118,9 +118,9 @@ Both the `config` and `main` volumes are included in backups. Restoring a backup
 
 ## Health Checks
 
-| Check    | Method         | Success Message         | Error Message             |
-| -------- | -------------- | ----------------------- | ------------------------- |
-| Web API  | TCP port 5959  | "The web API is ready"  | "The API is unreachable"  |
+| Check   | Method        | Success Message        | Error Message            |
+| ------- | ------------- | ---------------------- | ------------------------ |
+| Web API | TCP port 5959 | "The web API is ready" | "The API is unreachable" |
 
 ## Dependencies
 
