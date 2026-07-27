@@ -20,7 +20,8 @@ export const main = sdk.setupMain(async ({ effects }) => {
       fallbackPort: socksPort,
     })
     .const()
-  await configYaml.merge(effects, { 'tor-proxy': torProxy })
+  // start-registryd parses tor-proxy as a URL; the bridge address is bare host:port.
+  await configYaml.merge(effects, { 'tor-proxy': `socks5h://${torProxy}` })
 
   return sdk.Daemons.of(effects).addDaemon('primary', {
     subcontainer: sdk.SubContainer.of(
