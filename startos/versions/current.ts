@@ -1,23 +1,23 @@
 import { VersionInfo, IMPOSSIBLE } from '@start9labs/start-sdk'
 
 export const current = VersionInfo.of({
-  version: '1.0.1:2',
+  version: '1.0.1:3',
   releaseNotes: {
-    en_US: `Resolves the addresses of connected services more reliably.
+    en_US: `Fixes StartOS Registry failing to start.
 
-StartOS Registry looked up where to reach its dependencies through a field that only applies to one of the two ways a service can publish a port. It now reads the address itself, so a dependency changing how it serves TLS can no longer leave StartOS Registry unable to find it. Nothing changes in normal operation.`,
-    es_ES: `Resuelve de forma más fiable las direcciones de los servicios conectados.
+StartOS Registry wrote its Tor proxy setting as a bare host and port, but the server reads that setting as a full address, so it exited immediately on startup and the Configure Registry and Add Administrator setup actions failed. The setting is now written as a complete address, so the service starts and both setup actions work.`,
+    es_ES: `Corrige el fallo de arranque de StartOS Registry.
 
-StartOS Registry localizaba sus dependencias mediante un campo que solo se aplica a una de las dos formas en que un servicio puede publicar un puerto. Ahora lee la dirección en sí, de modo que si una dependencia cambia su forma de servir TLS, StartOS Registry seguirá encontrándola. En funcionamiento normal no cambia nada.`,
-    de_DE: `Ermittelt die Adressen verbundener Dienste zuverlässiger.
+StartOS Registry escribía su ajuste de proxy Tor como un host y un puerto sueltos, pero el servidor lee ese ajuste como una dirección completa, por lo que se cerraba nada más arrancar y fallaban las acciones de configuración Configurar registro y Añadir administrador. Ahora el ajuste se escribe como una dirección completa, de modo que el servicio arranca y ambas acciones funcionan.`,
+    de_DE: `Behebt den Startfehler von StartOS Registry.
 
-StartOS Registry suchte seine Abhängigkeiten über ein Feld, das nur für eine der beiden Arten gilt, auf die ein Dienst einen Port veröffentlichen kann. Jetzt wird die Adresse selbst gelesen, sodass eine Abhängigkeit, die ihre TLS-Bereitstellung ändert, für StartOS Registry auffindbar bleibt. Im normalen Betrieb ändert sich nichts.`,
-    pl_PL: `Pewniej ustala adresy połączonych usług.
+StartOS Registry schrieb seine Tor-Proxy-Einstellung als reinen Host mit Port, der Server liest diese Einstellung jedoch als vollständige Adresse. Dadurch beendete er sich sofort beim Start und die Einrichtungsaktionen „Registry konfigurieren“ und „Administrator hinzufügen“ schlugen fehl. Die Einstellung wird jetzt als vollständige Adresse geschrieben, sodass der Dienst startet und beide Aktionen funktionieren.`,
+    pl_PL: `Naprawia błąd uruchamiania StartOS Registry.
 
-StartOS Registry wyszukiwał swoje zależności przez pole, które dotyczy tylko jednego z dwóch sposobów publikowania portu przez usługę. Teraz odczytuje sam adres, więc zależność zmieniająca sposób udostępniania TLS nadal pozostanie odnajdywalna dla StartOS Registry. W normalnej pracy nic się nie zmienia.`,
-    fr_FR: `Détermine plus fiablement les adresses des services connectés.
+StartOS Registry zapisywał ustawienie serwera proxy Tor jako sam host z portem, natomiast serwer odczytuje to ustawienie jako pełny adres. Z tego powodu kończył pracę zaraz po starcie, a akcje konfiguracyjne „Skonfiguruj rejestr” i „Dodaj administratora” kończyły się błędem. Ustawienie jest teraz zapisywane jako pełny adres, dzięki czemu usługa się uruchamia, a obie akcje działają.`,
+    fr_FR: `Corrige l'échec de démarrage de StartOS Registry.
 
-StartOS Registry localisait ses dépendances via un champ qui ne s'applique qu'à l'un des deux modes de publication d'un port par un service. Il lit désormais l'adresse elle-même : une dépendance qui change sa façon de servir TLS reste donc trouvable par StartOS Registry. Rien ne change en fonctionnement normal.`,
+StartOS Registry écrivait son paramètre de proxy Tor sous forme d'hôte et de port seuls, alors que le serveur lit ce paramètre comme une adresse complète : il s'arrêtait donc dès le démarrage et les actions de configuration « Configurer le registre » et « Ajouter un administrateur » échouaient. Le paramètre est désormais écrit sous forme d'adresse complète, de sorte que le service démarre et que les deux actions fonctionnent.`,
   },
   migrations: {
     up: async ({ effects }) => {},
