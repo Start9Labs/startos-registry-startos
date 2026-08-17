@@ -4,18 +4,15 @@
 
 # StartOS Registry on StartOS
 
-> **Upstream docs:** <https://docs.start9.com/start-os/cli-reference.html#s9pk-packaging> | <https://docs.start9.com/start-os/cli-reference.html#registry>
->
-> Everything not listed in this document should behave the same as the
-> upstream StartOS Registry. If a feature, setting, or behavior is not
-> mentioned here, the upstream documentation is accurate and fully
-> applicable.
+> Everything not listed in this document should behave the same as upstream
+> StartOS Registry. If a feature, setting, or behavior is not mentioned here,
+> the upstream documentation is accurate and fully applicable — see the
+> Documentation section of `instructions.md` for links.
 
-A self-hosted package registry for StartOS. Curate a list of your favorite StartOS services and distribute them to friends, family, and anyone who trusts your registry.
+[StartOS Registry](https://github.com/Start9Labs/start-os/tree/master/projects/start-registry/) is the server behind a StartOS marketplace: it indexes signed `.s9pk` packages and serves them to StartOS servers that add it. This package runs your own, administered entirely by public key — there is no account, no password, and no login anywhere in it.
 
-StartOS is designed around an open registry model: anyone, anywhere can establish their own registry. No single entity controls which services are available, and no service can be effectively censored. Users choose which registries to trust, and services can be distributed through multiple independent registries, direct file transfer, or built from source. By running your own registry, you become a distribution point in this decentralized ecosystem.
-
-The upstream source lives in the [StartOS monorepo](https://github.com/Start9Labs/start-os/tree/master/projects/start-registry/). The registry server (`start-registry`) is versioned independently of the StartOS platform, starting at `1.0.0`.
+- **Upstream repo:** <https://github.com/Start9Labs/start-os/tree/master/projects/start-registry/>
+- **Wrapper repo:** <https://github.com/Start9Labs/startos-registry-startos/>
 
 ---
 
@@ -23,129 +20,163 @@ The upstream source lives in the [StartOS monorepo](https://github.com/Start9Lab
 
 - [Image and Container Runtime](#image-and-container-runtime)
 - [Volume and Data Layout](#volume-and-data-layout)
-- [Installation and First-Run Flow](#installation-and-first-run-flow)
-- [Configuration Management](#configuration-management)
-- [Network Access and Interfaces](#network-access-and-interfaces)
-- [Actions (StartOS UI)](#actions-startos-ui)
-- [Backups and Restore](#backups-and-restore)
-- [Health Checks](#health-checks)
+- [File Models](#file-models)
 - [Dependencies](#dependencies)
+- [Network Access and Interfaces](#network-access-and-interfaces)
+- [Installation and First-Run Flow](#installation-and-first-run-flow)
+- [Actions](#actions)
+- [Tasks](#tasks)
+- [Health Checks](#health-checks)
+- [Backups and Restore](#backups-and-restore)
 - [Limitations and Differences](#limitations-and-differences)
-- [What Is Unchanged from Upstream](#what-is-unchanged-from-upstream)
-- [Contributing](#contributing)
 - [Quick Reference for AI Consumers](#quick-reference-for-ai-consumers)
 
 ---
 
 ## Image and Container Runtime
 
-| Property      | Value                                 |
-| ------------- | ------------------------------------- |
-| Image source  | `ghcr.io/start9labs/startos-registry` |
-| Architectures | x86_64, aarch64, riscv64              |
-| Entrypoint    | `start-registryd` (upstream default)  |
+One image, published by Start9 from the monorepo's `master` branch rather than from a tagged release — so the registry daemon a given package version ships is whatever `master` held when it was built.
 
-The package uses the upstream image unmodified.
+| Property      | Value                                                               |
+| ------------- | ------------------------------------------------------------------- |
+| Image         | `ghcr.io/start9labs/startos-registry`                               |
+| Architectures | Whatever the image publishes — the manifest declares no restriction |
+| Command       | `start-registryd`                                                   |
+
+| Subcontainer                                                      | Purpose                                                          |
+| ----------------------------------------------------------------- | ---------------------------------------------------------------- |
+| `startos-registry-sub`                                            | The `primary` daemon — the one to `attach` to                    |
+| `get-info`, `set-info`, `add-admin`, `remove-admin`, `delete-key` | Temporary; one per action, each running the `start-registry` CLI |
+
+**Every subcontainer here is declared `sharedRun: true`, and that is the whole mechanism behind the actions.** They share the daemon's `/run`, so the `start-registry` CLI in a temporary container reaches the running `start-registryd` over its socket rather than over the network. It is also why every action requires the service to be running: with no daemon there is no socket to talk to.
 
 ## Volume and Data Layout
 
-| Volume   | Mount Point                             | Purpose                 |
-| -------- | --------------------------------------- | ----------------------- |
-| `config` | `/etc/startos/config.yaml` (file mount) | Registry configuration  |
-| `main`   | `/var/lib/startos`                      | Registry data directory |
+Two volumes, one of which is mounted as a single file.
 
-## Installation and First-Run Flow
+| Volume   | Mount Point                                                | Purpose                                                                     |
+| -------- | ---------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `main`   | `/var/lib/startos`                                         | The package index, the uploaded `.s9pk` files, and the admin/signer records |
+| `config` | its `config.yaml` at `/etc/startos/config.yaml`, as a file | The daemon's configuration                                                  |
 
-On first install, StartOS creates two setup tasks:
+The `main` volume grows with whatever you publish — a registry hosting a handful of packages across several versions is measured in gigabytes.
 
-1. **Configure Registry** -- set a name and optional icon for your registry
-2. **Add Administrator** -- add the first admin with a PEM public key and contact info
+## File Models
 
-Complete both tasks before the registry is ready for use.
+One model, holding the daemon's whole configuration. Everything else the registry knows lives in its own store on the `main` volume, reachable only through the CLI.
 
-## Configuration Management
+| File          | Volume   | Format | Modelled                | Written by             |
+| ------------- | -------- | ------ | ----------------------- | ---------------------- |
+| `config.yaml` | `config` | YAML   | Yes — `FileHelper.yaml` | Every init, and `main` |
 
-| StartOS-Managed                                                    | Upstream-Managed                                    |
-| ------------------------------------------------------------------ | --------------------------------------------------- |
-| Registry hostnames (synced automatically from interface addresses) | Package index (add/remove via `start-cli registry`) |
-| Listen address (`0.0.0.0:5959`)                                    | Admin signers and permissions                       |
-| Tor proxy (resolved from Tor's SOCKS bridge address)               | Package categories and mirrors                      |
-| Data directory (`/var/lib/startos`)                                | OS version registry                                 |
-| Registry name and icon (via action)                                |                                                     |
+| Key                 | Ownership | Notes                                                           |
+| ------------------- | --------- | --------------------------------------------------------------- |
+| `registry-listen`   | Enforced  | The address the daemon binds inside its container               |
+| `datadir`           | Enforced  | The `main` volume's mount point                                 |
+| `registry-hostname` | Derived   | Every non-local hostname the API interface publishes            |
+| `tor-proxy`         | Derived   | Tor's SOCKS address over the LXC bridge, written on every start |
 
-Hostnames are synced automatically: when the service's network addresses change, the `registry-hostname` list in `config.yaml` is updated to match.
+**`registry-hostname` is the one that matters operationally.** The daemon serves and signs against the hostnames it knows, so init rebuilds the list from the addresses actually published and rewrites the file whenever the set changes. Add a domain to this service and it is in the config on the next start, with nothing to run by hand.
 
-## Network Access and Interfaces
+**`tor-proxy` is always written, even with Tor absent.** The bridge lookup carries a fallback port, so the address stays constant whether or not Tor is installed — which keeps a Tor install or uninstall from restarting the registry. With no Tor running, outbound requests through it simply get connection-refused, which the daemon tolerates.
 
-| Interface | Port | Protocol | Purpose                                     |
-| --------- | ---- | -------- | ------------------------------------------- |
-| `api`     | 5959 | HTTP     | Web API for registry queries and management |
-
-The API is exposed via a multi-host binding, accessible over LAN, .local, and .onion addresses. There is no browser UI -- all interaction is through the API and CLI.
-
-## Actions (StartOS UI)
-
-### Configure Registry
-
-- **Purpose:** Set the registry's display name and icon
-- **Availability:** Only while running
-- **Visibility:** Enabled
-- **Inputs:**
-  - _Registry Name_ (required, max 32 characters)
-  - _Registry Icon_ (optional, base64 data URL)
-
-### Add Administrator
-
-- **Purpose:** Register a new admin signer with a public key
-- **Availability:** Only while running
-- **Visibility:** Enabled
-- **Inputs:**
-  - _Label_ (required) -- display name for the admin
-  - _Contact_ (required) -- email address or Matrix username (e.g. `@user:domain.com`)
-  - _Public Key_ (required) -- PEM-encoded public key
-
-### Remove Administrator
-
-- **Purpose:** Remove an existing admin signer
-- **Availability:** Only while running
-- **Visibility:** Enabled
-- **Inputs:**
-  - _Users_ (required) -- select from the current list of admins
-
-## Backups and Restore
-
-Both the `config` and `main` volumes are included in backups. Restoring a backup fully recovers the registry configuration, admin signers, and all indexed packages.
-
-## Health Checks
-
-| Check   | Method        | Success Message        | Error Message            |
-| ------- | ------------- | ---------------------- | ------------------------ |
-| Web API | TCP port 5959 | "The web API is ready" | "The API is unreachable" |
+The registry's name, icon, and administrators are **not** in this file. They live in the daemon's own store and are set through the actions.
 
 ## Dependencies
 
-None.
+None declared. Tor is used if present — see `tor-proxy` above — but is deliberately not a dependency: the registry works without it, and declaring it would make an optional outbound path into an install-time requirement.
+
+## Network Access and Interfaces
+
+One interface. It is what a StartOS server adds as a marketplace, and what a publisher pushes to.
+
+| Interface | Id    | Type | Port | Description                         |
+| --------- | ----- | ---- | ---- | ----------------------------------- |
+| Web API   | `api` | api  | 5959 | The web API of your custom registry |
+
+The port is bound on the `api-multi` MultiHost and is not masked.
+
+**Publishing an address here is how the registry becomes usable to anyone else**, and it feeds `registry-hostname` directly. A registry only reachable on `.local` works, but only from the same LAN.
+
+## Installation and First-Run Flow
+
+Install starts the daemon and raises two tasks. Nothing is generated and no credential is shown — this service has no accounts.
+
+1. **Configure Registry** — a name, and optionally an icon. This is what StartOS servers display when they add your registry.
+2. **Add Administrator** — a label, a contact, and a **PEM-encoded public key**. That key is the whole of the authorization model: administration is proving possession of the matching private key, not logging in.
+
+Both tasks require the service to be running, since both go through the CLI to the live daemon. Both are `important`: the registry serves an empty index perfectly well without them, it just has no identity and nobody who can administer it.
+
+## Actions
+
+Three actions, and **all three are only available while the service is running.**
+
+### Configure Registry
+
+Sets the registry's display name and icon.
+
+- **What it changes:** the daemon's own store, via `start-registry info set-name` / `set-icon`.
+- **Cost:** seconds. No restart.
+- **Repeat safety:** idempotent, and the form is pre-filled from the live daemon rather than from a file.
+- **The icon is a data URL or an http(s) URL**, validated by pattern before it is accepted. Leaving it blank leaves the existing icon in place rather than clearing it.
+
+### Add Administrator
+
+Registers a signer and grants it admin rights.
+
+- **What it changes:** the daemon's store — it adds a signer record with the label, contact, and public key, then grants that signer id admin.
+- **Cost:** seconds. No restart.
+- **Repeat safety:** each run adds a new administrator; it is not an edit. Running it twice with the same key yields two records.
+- **The contact is stored as a URL** — an email becomes `mailto:`, a Matrix username becomes a `matrix.to` link.
+- **The key must be a PEM public key**, checked by pattern. There is no key generation here: the private half is yours and never touches this server.
+
+### Remove Administrator
+
+Revokes an administrator by removing their signer record.
+
+- **What it changes:** the daemon's store, via `start-registry admin signer remove`.
+- **Cost:** seconds. No restart.
+- **Repeat safety:** idempotent per administrator; the dropdown is built from the live list.
+- **Nothing stops you removing the last one.** Do that and no key can administer the registry any more — recovery means the CLI inside the container.
+
+## Tasks
+
+Two tasks, both raised at install.
+
+| Task               | Severity    | Raised when | Cleared when    |
+| ------------------ | ----------- | ----------- | --------------- |
+| Configure Registry | `important` | At install  | The action runs |
+| Add Administrator  | `important` | At install  | The action runs |
+
+`important` rather than `critical` because the daemon runs and serves regardless. What is missing without them is identity and the ability to publish, not function.
+
+## Health Checks
+
+One check, on the only daemon.
+
+| Check     | Displayed | Method                 |
+| --------- | --------- | ---------------------- |
+| `primary` | "Web API" | Port 5959 is listening |
+
+The daemon binds quickly, so a failure means it did not start — most often a `config.yaml` value it rejects, which it names in the service logs. Actions failing while this check is green is a different symptom: those go through the shared `/run` socket rather than the port, so a CLI error points at the daemon's store or the argument it was given, not at reachability.
+
+## Backups and Restore
+
+Both volumes are copied wholesale — `sdk.Backups.ofVolumes('config', 'main')`. No dump step and nothing excluded.
+
+- **Included:** every published `.s9pk`, the whole index, the administrator and signer records, and `config.yaml`.
+- **Size:** this is the large one. The backup is as big as everything you have ever published and not removed.
+- **Restore:** complete, and no task is raised — the name, icon, and administrators come back with the store. If the restored server publishes different addresses, init rewrites `registry-hostname` from the live set on the first start.
 
 ## Limitations and Differences
 
-1. **CLI only.** There is no web UI. All registry management beyond the three StartOS actions (configure, add admin, remove admin) must be done via `start-cli registry` and `start-cli s9pk`. Admin and signer requests use the request-signature auth scheme introduced in `start-registry` 1.0.0, so a managing workstation needs `start-cli` 1.1.0 or newer.
-2. **No GUI for package management.** Adding, removing, categorizing, and signing packages requires CLI access.
-3. **No built-in S3 publishing.** Package distribution relies on the registry API; S3 mirror configuration is done externally.
-4. **Categories are not yet configurable via actions.** The Configure Registry action has a placeholder for category management that is not yet implemented.
-
-## What Is Unchanged from Upstream
-
-- Package indexing, signing, and distribution
-- Admin signer management (add, remove, edit, list)
-- Package category and mirror management
-- OS version and asset management
-- Registry database operations (dump, apply)
-- Ed25519 cryptographic signing for package authenticity
-- All `start-cli registry` and `start-cli s9pk` subcommands
-
-## Contributing
-
-Build and development workflow follow the StartOS packaging guide: <https://docs.start9.com/packaging>. Keep `README.md`, `instructions.md`, and `AGENTS.md` in sync with any change to user-visible behavior or package structure.
+1. **Administration is by public key only.** No accounts, no passwords, no web login — the private key is yours to keep.
+2. **Removing the last administrator locks you out** of everything the actions do; nothing warns you first.
+3. **Every action needs the service running**, because they reach the daemon over a shared socket rather than a network port.
+4. **The image tracks the monorepo's `master` branch** rather than a tagged release.
+5. **The manifest declares no architecture restriction**, so which architectures work is whatever the published image covers.
+6. **Categories are not configurable here yet** — the Configure Registry action sets name and icon only.
+7. **Tor is not a dependency**, and a `tor-proxy` value is written whether or not Tor is installed.
 
 ---
 
@@ -153,23 +184,31 @@ Build and development workflow follow the StartOS packaging guide: <https://docs
 
 ```yaml
 package_id: startos-registry
-image: ghcr.io/start9labs/startos-registry
-architectures: [x86_64, aarch64, riscv64]
-volumes:
-  config: /etc/startos/config.yaml
-  main: /var/lib/startos
-ports:
-  api: 5959
-dependencies: none
-startos_managed_settings:
-  - registry-hostname (auto-synced)
-  - registry-listen
-  - tor-proxy
-  - datadir
-  - registry name (via action)
-  - registry icon (via action)
-actions:
-  - config
+image: ghcr.io/start9labs/startos-registry # built from the monorepo's master branch
+architectures: as published by the image # the manifest declares no restriction
+subcontainers:
+  - startos-registry-sub # the running daemon
+  - get-info # temporary; one per action, all sharedRun: true
+  - set-info
   - add-admin
   - remove-admin
+  - delete-key
+volumes:
+  main: /var/lib/startos
+  config: its config.yaml at /etc/startos/config.yaml (file mount)
+file_models:
+  - config.yaml
+startos_managed_env_vars: []
+dependencies: [] # tor is used when present but not declared
+interfaces:
+  api: { type: api, port: 5959 }
+actions:
+  - config # only-running
+  - add-admin # only-running
+  - remove-admin # only-running
+tasks:
+  - { action: config, severity: important }
+  - { action: add-admin, severity: important }
+health_checks:
+  - primary # displayed "Web API"
 ```
