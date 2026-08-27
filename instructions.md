@@ -14,7 +14,7 @@
 
 After install the registry is stopped and two tasks are waiting. The two tasks give the registry its name and its first administrator. Both talk to the running daemon, so start the registry first.
 
-1. Start the registry. Its hostnames will appear on the **Web API** interface.
+1. Start the registry. Its address is shown on the **Web API** interface.
 2. Run the **Configure Registry** task and set a registry name (and optionally an icon).
 3. Run the **Add Administrator** task to register the first admin. You'll need a label, a contact (email address or Matrix username), and a PEM-encoded ed25519 public key. Whoever holds the matching private key signs every package you publish through this registry.
 

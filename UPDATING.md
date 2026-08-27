@@ -37,7 +37,7 @@ TOKEN=$(curl -sS --fail 'https://ghcr.io/token?scope=repository:start9labs/start
 
 ```
 DIGEST=$(curl -sSI --fail -H "Authorization: Bearer $TOKEN" \
-  -H 'Accept: application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json' \
+  -H 'Accept: application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.oci.image.manifest.v1+json' \
   https://ghcr.io/v2/start9labs/startos-registry/manifests/master |
   tr -d '\r' | awk 'tolower($1) == "docker-content-digest:" { print $2 }')
 ```
@@ -74,9 +74,9 @@ An index still has to carry a child for every architecture `make` builds, and a 
 
 ```
 docker buildx imagetools inspect "ghcr.io/start9labs/startos-registry@$DIGEST" --raw |
-  jq -e -r '[(.manifests // [])[].platform | select(.architecture != "unknown") | "\(.os)/\(.architecture)"] | sort
-            | if . == ["linux/amd64", "linux/arm64", "linux/riscv64"] then "all three architectures present"
-              else error("this digest carries \(.) — make needs linux/amd64, linux/arm64 and linux/riscv64") end'
+  jq -e -r '[(.manifests // [])[].platform | select(.architecture != "unknown") | "\(.os)/\(.architecture)"] | sort as $have
+            | if (["linux/amd64", "linux/arm64", "linux/riscv64"] - $have) == [] then "all three architectures present"
+              else error("this digest carries \($have) — make needs linux/amd64, linux/arm64 and linux/riscv64") end'
 ```
 
 or, with a `$TOKEN` minted by the `TOKEN=` block above:
@@ -85,9 +85,9 @@ or, with a `$TOKEN` minted by the `TOKEN=` block above:
 curl -sS --fail -H "Authorization: Bearer $TOKEN" \
   -H 'Accept: application/vnd.oci.image.index.v1+json, application/vnd.oci.image.manifest.v1+json' \
   "https://ghcr.io/v2/start9labs/startos-registry/manifests/$DIGEST" |
-  jq -e -r '[(.manifests // [])[].platform | select(.architecture != "unknown") | "\(.os)/\(.architecture)"] | sort
-            | if . == ["linux/amd64", "linux/arm64", "linux/riscv64"] then "all three architectures present"
-              else error("this digest carries \(.) — make needs linux/amd64, linux/arm64 and linux/riscv64") end'
+  jq -e -r '[(.manifests // [])[].platform | select(.architecture != "unknown") | "\(.os)/\(.architecture)"] | sort as $have
+            | if (["linux/amd64", "linux/arm64", "linux/riscv64"] - $have) == [] then "all three architectures present"
+              else error("this digest carries \($have) — make needs linux/amd64, linux/arm64 and linux/riscv64") end'
 ```
 
 Both print `all three architectures present`, or name what the digest does carry and exit non-zero. A pull-request build can be single-architecture, so a digest that is genuinely an index still needs this check.
@@ -99,7 +99,7 @@ docker run --rm --entrypoint start-registry \
   "ghcr.io/start9labs/startos-registry@$DIGEST" --version
 ```
 
-Going the other way — to find out which monorepo commit a digest was built from — read the provenance attestation that buildx pushes beside the image. This reads whichever digest the manifest currently holds, so it names the outgoing build before you edit the pin and the incoming build after. Run it from the repo root:
+Going the other way — to find out which monorepo commit a digest was built from — read the provenance attestation that buildx pushes beside the image. This reads whichever digest the manifest held when you last ran the assignment below, so it names the outgoing build before you edit the pin and the incoming build after. Re-run the assignment each time; it is a snapshot, not a live read. Run it from the repo root:
 
 ```
 PINNED=$(sed -n 's|.*startos-registry@\(sha256:[0-9a-f]\{64\}\).*|\1|p' startos/manifest/index.ts)
@@ -136,15 +136,15 @@ curl -sSL --fail -H "Authorization: Bearer $TOKEN" "$REPO/blobs/$BLOB" |
              "\(.repository.full_name) \(.ref // .pull_request.head.ref) \($sha)" end'
 ```
 
-On an index carrying amd64 provenance both print one line: the monorepo, the ref, and the commit the pin was built from. A pull-request build names its own branch and head commit. On anything else both raise and exit non-zero. A `curl: (22)` line is an HTTP failure rather than the guard rejecting the digest, and it carries the status. A `404` means `$PINNED` names a digest GHCR does not hold, so check it against the manifest. Any other status points at the token, so mint it again.
+On an index carrying amd64 provenance both print one line: the monorepo, the ref, and the commit the pin was built from. A pull-request build names its own branch and head commit, and its image is built from that commit merged into its base. On anything else both raise and exit non-zero. A `curl: (22)` line is an HTTP failure rather than the guard rejecting the digest, and it carries the status. A `404` means `$PINNED` names a digest GHCR does not hold, so check it against the manifest. Any other status points at the token, so mint it again.
 
 ## Applying the bump
 
-- Compare the resolved digest against the one the manifest holds — `sed -n 's|.*startos-registry@\(sha256:[0-9a-f]\{64\}\).*|\1|p' startos/manifest/index.ts` prints the current pin — then set `images['startos-registry'].source.dockerTag` in `startos/manifest/index.ts` to `ghcr.io/start9labs/startos-registry@` followed by the resolved digest.
-- Then set `version` in `startos/versions/current.ts`. Three questions decide it: is the resolved digest the one the manifest already held, what version does the new digest report, and what has this repo already released? The comparison above answers the first, the version check answers the second, and `git ls-remote --tags https://github.com/Start9Labs/startos-registry-startos.git 'refs/tags/v*'` answers the third — every released revision is there as `v<version>_<n>`.
+- Compare the resolved digest against the one the manifest holds — `sed -n 's|.*startos-registry@\(sha256:[0-9a-f]\{64\}\).*|\1|p' startos/manifest/index.ts` prints the current pin. If they differ, set `images['startos-registry'].source.dockerTag` in `startos/manifest/index.ts` to `ghcr.io/start9labs/startos-registry@` followed by the resolved digest.
+- Then set `version` in `startos/versions/current.ts`. Three questions decide it: is the resolved digest the one the manifest already held, what version does the new digest report, and what has this repo already released? The comparison above answers the first, the version check answers the second, and `git ls-remote --tags https://github.com/Start9Labs/startos-registry-startos.git 'refs/tags/v*' | sort -V -k2` answers the third — every released revision is there as `v<version>_<n>`.
   - **The digest is the one the manifest already held.** `:master` still points at the build the manifest pins, so there is no new image to package. Leave the manifest and the version string alone. If the version check reported something `current.ts` does not declare, correct it as the next branch describes: a version the pinned image does not report is wrong whether or not the digest moved. If `current.ts` declares a version upstream has not tagged, read its release notes against the CHANGELOG even so: that section stays open, so it can have gained entries since those notes were written.
   - **A new digest, reporting a version `current.ts` does not declare.** Set `version` to `<registry version>:0` — or to `<registry version>:<n+1>` if the tag list already shows a `v<registry version>_<n>`, which happens when the branch was cut before that version shipped. Run the provenance step above once the manifest holds the new digest: it names the commit the pin was built from. Write release notes for what that commit carries, reading `projects/start-registry/CHANGELOG.md` against it rather than copying the section. The section can run ahead of the pin, where entries landed after it, and behind the pin, where the pin sits on a commit later than the tag. Without a `start-registry/v<registry version>` tag the pin is a pre-release build and that section is still open.
-  - **A new digest, the same version, and this repo has not released the revision `current.ts` declares.** Leave the version string alone. Read the release notes against the CHANGELOG even so: while upstream has not tagged this version its section stays open, so it can have gained entries since those notes were written.
+  - **A new digest, the same version, and this repo has not released the revision `current.ts` declares.** Leave the version string alone. Read the release notes against the CHANGELOG even so: the new digest is a different build of that version, so the notes can describe a commit the pin no longer sits on.
   - **A new digest, the same version, and this repo has released that revision.** Set `version` to `<registry version>:<n+1>`, where `n` is the highest revision the tag list shows for that version, because the new digest is a different build of the same version. Write release notes for what the new image changed.
 - Write the release notes in every locale `current.ts` carries. The field takes any subset, and `npm run check` passes on a translation left describing the previous version, so read each one before committing.
 - Build all three architectures:

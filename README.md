@@ -102,7 +102,7 @@ The port is bound on the `api-multi` MultiHost and is not masked.
 
 Install raises two tasks and leaves the registry stopped. Nothing is generated and no credential is shown — this service has no accounts.
 
-1. **Start the registry** — its hostnames appear on the **Web API** interface.
+1. **Start the registry** — its address is on the **Web API** interface.
 2. **Configure Registry** — a name, and optionally an icon. This is what StartOS servers display when they add your registry.
 3. **Add Administrator** — a label, a contact, and a **PEM-encoded ed25519 public key**. That key is the whole of the authorization model: administration is proving possession of the matching private key, not logging in.
 
