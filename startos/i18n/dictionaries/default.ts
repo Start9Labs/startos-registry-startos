@@ -27,6 +27,7 @@ const dict = {
   Username: 16,
   'Must be a valid matrix username (e.g. @user:domain.com)': 17,
   'Public Key': 18,
+  'Must be a valid PEM encoded public key': 24,
 
   // actions/removeAdmin.ts
   'Remove Administrator': 19,

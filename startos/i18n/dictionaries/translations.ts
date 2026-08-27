@@ -26,6 +26,7 @@ export default {
     21: 'Usuarios',
     22: 'Establecer información básica sobre tu registro',
     23: 'Añadir un administrador a tu registro',
+    24: 'Debe ser una clave pública válida codificada en PEM',
   },
   de_DE: {
     0: 'Starte StartOS Registry!',
@@ -52,6 +53,7 @@ export default {
     21: 'Benutzer',
     22: 'Grundlegende Informationen über deine Registry festlegen',
     23: 'Einen Administrator zu deiner Registry hinzufügen',
+    24: 'Muss ein gültiger PEM-kodierter öffentlicher Schlüssel sein',
   },
   pl_PL: {
     0: 'Uruchamianie StartOS Registry!',
@@ -78,6 +80,7 @@ export default {
     21: 'Użytkownicy',
     22: 'Ustaw podstawowe informacje o swoim rejestrze',
     23: 'Dodaj administratora do swojego rejestru',
+    24: 'Musi być prawidłowym kluczem publicznym zakodowanym w PEM',
   },
   fr_FR: {
     0: 'Démarrage de StartOS Registry !',
@@ -104,5 +107,6 @@ export default {
     21: 'Utilisateurs',
     22: 'Définir les informations de base de votre registre',
     23: 'Ajouter un administrateur à votre registre',
+    24: 'Doit être une clé publique valide encodée en PEM',
   },
 } satisfies Record<string, LangDict>
