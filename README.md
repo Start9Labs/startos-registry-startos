@@ -127,7 +127,7 @@ Registers a signer and grants it admin rights.
 
 - **What it changes:** the daemon's store — it adds a signer record with the label, contact, and public key, then grants that signer id admin.
 - **Cost:** seconds. No restart.
-- **Repeat safety:** the action adds rather than edits, so every new key becomes another administrator. Re-running it with a key the daemon already holds fails, names the signer that has it, and changes nothing — it always creates the signer first, so granting admin to a signer that already exists takes the CLI: `start-cli registry admin add <id>` from a machine holding an admin key, or `start-registry admin add <id>` inside the container when there is no administrator yet to authenticate as.
+- **Repeat safety:** the action adds rather than edits, so every new key becomes another administrator. Re-running it with a key the daemon already holds fails, names the signer that has it, and changes nothing — it always creates the signer first, so granting admin to a signer that already exists takes the CLI: `start-cli --registry <the Web API address> registry admin add <id>` from a machine holding an admin key, or `start-registry admin add <id>` inside the container when there is no administrator yet to authenticate as.
 - **The contact is stored as a URL** — an email becomes `mailto:`, a Matrix username becomes a `matrix.to` link.
 - **The key must be an ed25519 public key in SPKI PEM form** — the `-----BEGIN PUBLIC KEY-----` block. OpenSSH's `ssh-ed25519 …` and PKCS#1's `-----BEGIN RSA PUBLIC KEY-----` are both rejected by the form itself. The pattern does not check the key type, so an RSA key in SPKI form passes the form and is then refused by the `start-registry` CLI when the action runs. There is no key generation in this package: the private half is yours and never touches this server — `start-cli init-key` creates one on the administrator's own machine and `start-cli pubkey` prints the public half in the form the pattern accepts.
 
@@ -173,7 +173,7 @@ Both volumes are copied wholesale — `sdk.Backups.ofVolumes('config', 'main')`.
 
 1. **Administration is by public key only.** No accounts, no passwords, no web login — the private key is yours to keep.
 2. **Removing the last administrator locks you out** of everything the actions do; nothing warns you first.
-3. **Every action needs the service running**, because they call the daemon's API port and authenticate with a cookie only the running daemon writes.
+3. **Every action needs the service running**, because they call the daemon's API port and a stopped daemon is listening on nothing.
 4. **The image is a build of the monorepo's `master` branch** rather than of a tagged release. The manifest pins one such build by digest.
 5. **Categories are set from the CLI, not from an action** — `start-cli registry package category` adds and removes them and assigns packages to them. The Configure Registry action sets name and icon.
 6. **Tor is not a dependency**, and a `tor-proxy` value is written whether or not Tor is installed.
