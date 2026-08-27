@@ -14,7 +14,7 @@ export const manifest = setupManifest({
   volumes: ['config', 'main'],
   images: {
     'startos-registry': {
-      // Upstream publishes no per-release image tag, so the pin is a digest.
+      // Upstream tags each image with the ref it built from, so a digest is the only stable reference.
       source: {
         dockerTag:
           'ghcr.io/start9labs/startos-registry@sha256:828fd148ad0bcdf8f4ea688c06efc95a2d65e89c8d243e575965c358ec04bf60',

@@ -127,9 +127,9 @@ Registers a signer and grants it admin rights.
 
 - **What it changes:** the daemon's store — it adds a signer record with the label, contact, and public key, then grants that signer id admin.
 - **Cost:** seconds. No restart.
-- **Repeat safety:** each run adds a new administrator; it is not an edit. The daemon refuses a key it already holds and names the signer that has it, so running the action again with the same key changes nothing.
+- **Repeat safety:** it adds rather than edits, so every new key becomes another administrator. The daemon refuses a key it already holds and names the signer that has it, so a repeat run with the same key changes nothing.
 - **The contact is stored as a URL** — an email becomes `mailto:`, a Matrix username becomes a `matrix.to` link.
-- **The key must be a PEM-encoded ed25519 public key.** The form's pattern accepts any PEM public key, so the `start-registry` CLI refuses another kind when the action runs, not the form. There is no key generation here: the private half is yours and never touches this server.
+- **The key must be a PEM-encoded ed25519 public key.** The form's pattern accepts any PEM public key, so a key of another kind passes the form and is then refused by the `start-registry` CLI when the action runs. There is no key generation here: the private half is yours and never touches this server.
 
 ### Remove Administrator
 
