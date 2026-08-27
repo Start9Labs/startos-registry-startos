@@ -43,10 +43,10 @@ One image, published by Start9 from the monorepo's `master` branch rather than f
 | Architectures | `aarch64`, `x86_64`, `riscv64` — one s9pk each          |
 | Command       | `start-registryd`                                       |
 
-| Subcontainer                                                      | Purpose                                                                                      |
-| ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| `startos-registry-sub`                                            | The `primary` daemon — the one to `attach` to                                                |
-| `get-info`, `set-info`, `add-admin`, `remove-admin`, `delete-key` | Temporary; one per action, plus one more where the action reads the daemon to build its form |
+| Subcontainer                                                      | Purpose                                                                                |
+| ----------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `startos-registry-sub`                                            | The `primary` daemon — the one to `attach` to                                          |
+| `get-info`, `set-info`, `add-admin`, `remove-admin`, `delete-key` | Temporary; one per action, plus one per action that reads the daemon to build its form |
 
 **Every subcontainer here is declared `sharedRun: true`, and that is the whole mechanism behind the actions.** They share the daemon's `/run`, so the `start-registry` CLI in a temporary container reaches the running `start-registryd` over its socket rather than over the network. It is also why every action requires the service to be running: with no daemon there is no socket to talk to.
 
@@ -127,9 +127,9 @@ Registers a signer and grants it admin rights.
 
 - **What it changes:** the daemon's store — it adds a signer record with the label, contact, and public key, then grants that signer id admin.
 - **Cost:** seconds. No restart.
-- **Repeat safety:** each run adds a new administrator; it is not an edit. Running it twice with the same key yields two records.
+- **Repeat safety:** each run adds a new administrator; it is not an edit. The daemon refuses a key it already holds and names the signer that has it, so running the action again with the same key changes nothing.
 - **The contact is stored as a URL** — an email becomes `mailto:`, a Matrix username becomes a `matrix.to` link.
-- **The key must be a PEM-encoded ed25519 public key.** The form's pattern accepts any PEM public key, so another kind is refused by the daemon rather than by the form. There is no key generation here: the private half is yours and never touches this server.
+- **The key must be a PEM-encoded ed25519 public key.** The form's pattern accepts any PEM public key, so the `start-registry` CLI refuses another kind when the action runs, not the form. There is no key generation here: the private half is yours and never touches this server.
 
 ### Remove Administrator
 
