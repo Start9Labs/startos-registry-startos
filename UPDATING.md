@@ -29,7 +29,7 @@ DIGEST=$(docker buildx imagetools inspect ghcr.io/start9labs/startos-registry:ma
   --format '{{.Manifest.Digest}}')
 ```
 
-`podman` has no `imagetools` subcommand. Use the form below with `podman`, or with no container runtime at all:
+`podman` has no `imagetools` subcommand, and `buildx` is a plugin `docker` can be installed without. Use the form below with `podman`, with a `docker` that answers `'buildx' is not a docker command`, or with no container runtime at all:
 
 ```
 TOKEN=$(curl -sS --fail 'https://ghcr.io/token?scope=repository:start9labs/startos-registry:pull&service=ghcr.io' | jq -e -r .token)
@@ -64,11 +64,11 @@ or, with a `$TOKEN` minted by the `TOKEN=` block above — run that block on its
 ```
 curl -sS --fail -o /dev/null -w '%{content_type}\n' \
   -H "Authorization: Bearer $TOKEN" \
-  -H 'Accept: application/vnd.oci.image.index.v1+json, application/vnd.oci.image.manifest.v1+json' \
+  -H 'Accept: application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.oci.image.manifest.v1+json' \
   "https://ghcr.io/v2/start9labs/startos-registry/manifests/$DIGEST"
 ```
 
-An index prints `application/vnd.oci.image.index.v1+json`. Everything an index lists prints `application/vnd.oci.image.manifest.v1+json` — the per-architecture children, and the attestation manifests that sit beside them. Anything else means the request failed rather than answered: an unset `$TOKEN` or an empty `$DIGEST` prints `text/plain; charset=utf-8` under a `curl: (22)` line. Run the check even when you expect the build to catch the mistake — `docker buildx imagetools inspect` without `--format` lists all of them next to the index, so the wrong line is an easy copy.
+An index prints `application/vnd.oci.image.index.v1+json`. Everything an index lists prints `application/vnd.oci.image.manifest.v1+json` — the per-architecture children, and the attestation manifests that sit beside them. Anything else means the request failed rather than answered, and the `curl: (22)` line above it carries the status. GHCR answers `404` for a `$DIGEST` that is empty or that it does not hold, and any other status points at the token. Run the check even when you expect the build to catch the mistake — `docker buildx imagetools inspect` without `--format` lists all of them next to the index, so the wrong line is an easy copy.
 
 An index still has to carry a child for every architecture `make` builds, and a partial one passes the check above because it is an index. Confirm all three are there:
 
@@ -83,14 +83,14 @@ or, with a `$TOKEN` minted by the `TOKEN=` block above — run that block on its
 
 ```
 curl -sS --fail -H "Authorization: Bearer $TOKEN" \
-  -H 'Accept: application/vnd.oci.image.index.v1+json, application/vnd.oci.image.manifest.v1+json' \
+  -H 'Accept: application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.oci.image.manifest.v1+json' \
   "https://ghcr.io/v2/start9labs/startos-registry/manifests/$DIGEST" |
   jq -e -r '[(.manifests // [])[].platform | select(.architecture != "unknown") | "\(.os)/\(.architecture)"] | sort as $have
             | if (["linux/amd64", "linux/arm64", "linux/riscv64"] - $have) == [] then "all three architectures present"
               else error("this digest carries \($have) — make needs linux/amd64, linux/arm64 and linux/riscv64") end'
 ```
 
-Both print `all three architectures present`, or name what the digest does carry and exit non-zero. A `curl: (22)` line is an HTTP failure rather than the guard rejecting the digest: `404` for a digest GHCR does not hold, anything else for the token. A pull-request build can be single-architecture, so a digest that is genuinely an index still needs this check.
+Both print `all three architectures present`, or name what the digest does carry and exit non-zero. A `curl: (22)` line is an HTTP failure rather than the guard rejecting the digest. GHCR answers `404` for a `$DIGEST` that is empty or that it does not hold, and any other status points at the token. A pull-request build can be single-architecture, so a digest that is genuinely an index still needs this check.
 
 Then confirm the digest carries the version you are about to declare. This step runs the image, because it carries no label or annotation naming its version. `podman run` works the same way. With no container runtime, run the provenance step below with `PINNED="$DIGEST"` in place of its `PINNED=` block; the rest of it needs no edit. Read `Cargo.toml` at the commit it names, using the `gh api` form in "Determining the upstream version" above with `master` in its URL replaced by that commit. For a branch build such as `:master`, the image reports the version that commit declared.
 
@@ -109,13 +109,13 @@ PINNED=$(sed -n 's|.*startos-registry@\(sha256:[0-9a-f]\{64\}\).*|\1|p' startos/
 echo "$PINNED"
 ```
 
-One `sha256:` line is the pin. No line means the manifest holds no digest, and two mean it holds a second one; the step below takes exactly one.
+One `sha256:` line is the pin, and the step below takes exactly one. Two lines mean the manifest holds a second digest. An empty line means the manifest holds no digest, or that `sed` ran outside the repo root, in which case `sed` says so above.
 
 ```
 docker buildx imagetools inspect "ghcr.io/start9labs/startos-registry@$PINNED" \
   --format '{{json .Provenance}}' |
   jq -e -r '.["linux/amd64"].SLSA.buildDefinition.internalParameters.github_event_payload
-            // error("no linux/amd64 provenance at this digest — it is a per-architecture child, a single-platform index, or a build that published no attestation")
+            // error("no linux/amd64 provenance at this digest — it is a per-architecture child, an attestation manifest, a single-platform index, or a build that published no attestation")
             | (.after // .pull_request.head.sha) as $sha
             | if $sha == null then error("this provenance names no commit") else
                 "\(.repository.full_name) \(.ref // .pull_request.head.ref) \($sha)" end'
@@ -126,15 +126,16 @@ or, with a `$TOKEN` minted by the `TOKEN=` block above — run that block on its
 ```
 REPO=https://ghcr.io/v2/start9labs/startos-registry
 ATTESTATION=$(curl -sS --fail -H "Authorization: Bearer $TOKEN" \
-  -H 'Accept: application/vnd.oci.image.index.v1+json, application/vnd.oci.image.manifest.v1+json' \
+  -H 'Accept: application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.oci.image.manifest.v1+json' \
   "$REPO/manifests/$PINNED" |
   jq -e -r '(.manifests // []) as $m
          | ($m | map(select(.platform.architecture == "amd64")) | .[0].digest) as $child
          | ($m | map(select($child != null and .annotations["vnd.docker.reference.digest"] == $child)) | .[0].digest)
-           // error("no linux/amd64 provenance at this digest — it is a per-architecture child, a single-platform index, or a build that published no attestation")') &&
+           // error("no linux/amd64 provenance at this digest — it is a per-architecture child, an attestation manifest, a single-platform index, or a build that published no attestation")') &&
 BLOB=$(curl -sS --fail -H "Authorization: Bearer $TOKEN" \
   -H 'Accept: application/vnd.oci.image.manifest.v1+json' "$REPO/manifests/$ATTESTATION" |
-  jq -e -r '.layers | map(select(.annotations["in-toto.io/predicate-type"] | test("slsa.dev/provenance"))) | .[0].digest') &&
+  jq -e -r '.layers | map(select((.annotations["in-toto.io/predicate-type"] // "") | test("slsa.dev/provenance")))
+         | .[0].digest // error("this attestation carries no SLSA provenance layer")') &&
 curl -sSL --fail -H "Authorization: Bearer $TOKEN" "$REPO/blobs/$BLOB" |
   jq -e -r '.predicate.buildDefinition.internalParameters.github_event_payload
          | (.after // .pull_request.head.sha) as $sha
@@ -142,7 +143,7 @@ curl -sSL --fail -H "Authorization: Bearer $TOKEN" "$REPO/blobs/$BLOB" |
              "\(.repository.full_name) \(.ref // .pull_request.head.ref) \($sha)" end'
 ```
 
-On an index carrying amd64 provenance both print one line: the monorepo, which prints as `Start9Labs/start-technologies`, then the ref and the commit the pin was built from. A pull-request build names its own branch and head commit, and its image is built from that commit merged into its base. On anything else both raise and exit non-zero. A `curl: (22)` line is an HTTP failure rather than the guard rejecting the digest, and it carries the status. A `404` means `$PINNED` names a digest GHCR does not hold, so check it against the manifest. Any other status points at the token, so mint it again.
+On an index carrying amd64 provenance both print one line: the monorepo, then the ref and the commit the pin was built from. The monorepo prints as `Start9Labs/start-technologies`, or as `Start9Labs/start-os` for a build from before the rename. A pull-request build names its own branch and head commit, and its image is built from that commit merged into its base. On anything else both raise and exit non-zero. A `curl: (22)` line is an HTTP failure rather than the guard rejecting the digest, and it carries the status. A `404` means `$PINNED` is empty or names a digest GHCR does not hold, so print it again and check it against the manifest. Any other status points at the token, so mint it again.
 
 ## Applying the bump
 
