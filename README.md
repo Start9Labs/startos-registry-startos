@@ -104,7 +104,7 @@ Install raises two tasks — **Configure Registry** and **Add Administrator** �
 
 1. **Start the registry** — its addresses are on the **Web API** interface. Both tasks go through the CLI to the live daemon, so neither runs until it is up.
 2. **Configure Registry** — a name, and optionally an icon. This is what StartOS servers display when they add your registry.
-3. **Add Administrator** — a label, a contact, and a **PEM-encoded ed25519 public key**. That key is the whole of the authorization model: administration is proving possession of the matching private key, not logging in.
+3. **Add Administrator** — a label, a contact, and an **ed25519 public key in SPKI PEM form**. That key is the whole of the authorization model: administration is proving possession of the matching private key, not logging in.
 
 Both tasks are `important`: the registry serves an empty index perfectly well without them, it just has no identity and nobody who can administer it.
 
@@ -129,7 +129,7 @@ Registers a signer and grants it admin rights.
 - **Cost:** seconds. No restart.
 - **Repeat safety:** it adds rather than edits, so every new key becomes another administrator. The daemon refuses a key it already holds and names the signer that has it, so a repeat run with the same key changes nothing.
 - **The contact is stored as a URL** — an email becomes `mailto:`, a Matrix username becomes a `matrix.to` link.
-- **The key must be an ed25519 public key in SPKI PEM form** — the `-----BEGIN PUBLIC KEY-----` block. OpenSSH's `ssh-ed25519 …` and PKCS#1's `-----BEGIN RSA PUBLIC KEY-----` are both rejected by the form itself. The pattern does not check the key type, so an RSA key in SPKI form passes the form and is then refused by the `start-registry` CLI when the action runs. There is no key generation here: the private half is yours and never touches this server.
+- **The key must be an ed25519 public key in SPKI PEM form** — the `-----BEGIN PUBLIC KEY-----` block. OpenSSH's `ssh-ed25519 …` and PKCS#1's `-----BEGIN RSA PUBLIC KEY-----` are both rejected by the form itself. The pattern does not check the key type, so an RSA key in SPKI form passes the form and is then refused by the `start-registry` CLI when the action runs. There is no key generation in this package: the private half is yours and never touches this server — `start-cli init-key` creates one on the administrator's own machine and `start-cli pubkey` prints the public half in the form the pattern accepts.
 
 ### Remove Administrator
 
