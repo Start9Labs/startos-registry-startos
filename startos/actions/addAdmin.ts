@@ -53,7 +53,7 @@ export const inputSpec = InputSpec.of({
     patterns: [
       {
         regex: utils.regexes.pem('PUBLIC KEY').asExpr(),
-        description: 'Must be a valid PEM encoded public key',
+        description: i18n('Must be a valid PEM encoded public key'),
       },
     ],
   }),

@@ -35,7 +35,7 @@ export const config = sdk.Action.withInput(
   // metadata
   async ({ effects }) => ({
     name: i18n('Configure Registry'),
-    description: i18n('Set the name, icon, and categories of your registry'),
+    description: i18n('Set the name and icon of your registry'),
     warning: null,
     allowedStatuses: 'only-running',
     group: null,

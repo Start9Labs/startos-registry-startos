@@ -12,11 +12,11 @@
 
 ## Getting set up
 
-After install you'll see two critical tasks. The registry can't be used until both are done.
+After install the registry is stopped and two tasks are waiting — one to name the registry, one to add its first administrator. Both talk to the running daemon, so start the registry first.
 
-1. Run the **Configure Registry** task and set a registry name (and optionally an icon).
-2. Run the **Add Administrator** task to register the first admin. You'll need a label, a contact (email address or Matrix username), and a PEM-encoded ed25519 public key. Whoever holds the matching private key signs every package you publish through this registry.
-3. Start the registry. Its hostnames will appear on the **Web API** interface.
+1. Start the registry. Its addresses are shown on the **Web API** interface.
+2. Run the **Configure Registry** task and set a registry name (and optionally an icon).
+3. Run the **Add Administrator** task to register the first admin. You'll need a label, a contact (email address or Matrix username), and an ed25519 public key in PEM form — the `-----BEGIN PUBLIC KEY-----` block, not OpenSSH's `ssh-ed25519 …`. `start-cli init-key` creates a key if you have none, and `start-cli pubkey` prints its public half in exactly that form. Whoever holds the matching private key signs every package you publish through this registry.
 
 ## Using the registry
 

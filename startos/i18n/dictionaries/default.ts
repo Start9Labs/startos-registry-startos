@@ -12,7 +12,7 @@ const dict = {
 
   // actions/config.ts
   'Configure Registry': 5,
-  'Set the name, icon, and categories of your registry': 6,
+  'Set the name and icon of your registry': 6,
   'Registry Name': 7,
   'Registry Icon': 8,
   'Must be a valid data URL or http(s) URL (e.g. data:image/png;base64,abc123... or https://example.com/icon.png)': 9,
@@ -27,6 +27,7 @@ const dict = {
   Username: 16,
   'Must be a valid matrix username (e.g. @user:domain.com)': 17,
   'Public Key': 18,
+  'Must be a valid PEM encoded public key': 24,
 
   // actions/removeAdmin.ts
   'Remove Administrator': 19,

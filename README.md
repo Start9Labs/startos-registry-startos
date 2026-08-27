@@ -35,20 +35,20 @@
 
 ## Image and Container Runtime
 
-One image, published by Start9 from the monorepo's `master` branch rather than from a tagged release — so the registry daemon a given package version ships is whatever `master` held when it was built.
+One image, published by Start9 from the monorepo's `master` branch rather than from a tagged release. The manifest pins it by digest, so every build of a given commit of this repo packs the same registry daemon, and the package version tracks the version that daemon reports.
 
-| Property      | Value                                                               |
-| ------------- | ------------------------------------------------------------------- |
-| Image         | `ghcr.io/start9labs/startos-registry`                               |
-| Architectures | Whatever the image publishes — the manifest declares no restriction |
-| Command       | `start-registryd`                                                   |
+| Property      | Value                                                   |
+| ------------- | ------------------------------------------------------- |
+| Image         | `ghcr.io/start9labs/startos-registry`, pinned by digest |
+| Architectures | `aarch64`, `x86_64`, `riscv64` — one s9pk each          |
+| Command       | `start-registryd`                                       |
 
-| Subcontainer                                                      | Purpose                                                          |
-| ----------------------------------------------------------------- | ---------------------------------------------------------------- |
-| `startos-registry-sub`                                            | The `primary` daemon — the one to `attach` to                    |
-| `get-info`, `set-info`, `add-admin`, `remove-admin`, `delete-key` | Temporary; one per action, each running the `start-registry` CLI |
+| Subcontainer                                                      | Purpose                                                                                |
+| ----------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `startos-registry-sub`                                            | The `primary` daemon — the one to `attach` to                                          |
+| `get-info`, `set-info`, `add-admin`, `remove-admin`, `delete-key` | Temporary; one per action, plus one per action that reads the daemon to build its form |
 
-**Every subcontainer here is declared `sharedRun: true`, and that is the whole mechanism behind the actions.** They share the daemon's `/run`, so the `start-registry` CLI in a temporary container reaches the running `start-registryd` over its socket rather than over the network. It is also why every action requires the service to be running: with no daemon there is no socket to talk to.
+**Every subcontainer here is declared `sharedRun: true`, and that is the whole mechanism behind the actions.** `start-registryd` writes an auth cookie to `/run/startos/registry.authcookie`, and sharing `/run` is what puts that cookie in front of the `start-registry` CLI in a temporary container. The CLI then calls the daemon on `127.0.0.1:5959`, the same port the health check probes. It is also why every action requires the service to be running: a stopped daemon is listening on nothing.
 
 ## Volume and Data Layout
 
@@ -78,7 +78,7 @@ One model, holding the daemon's whole configuration. Everything else the registr
 
 **`registry-hostname` is the one that matters operationally.** The daemon serves and signs against the hostnames it knows, so init rebuilds the list from the addresses actually published and rewrites the file whenever the set changes. Add a domain to this service and it is in the config on the next start, with nothing to run by hand.
 
-**`tor-proxy` is always written, even with Tor absent.** The bridge lookup carries a fallback port, so the address stays constant whether or not Tor is installed — which keeps a Tor install or uninstall from restarting the registry. With no Tor running, outbound requests through it simply get connection-refused, which the daemon tolerates.
+**`tor-proxy` is always written, even with Tor absent.** The bridge lookup carries a fallback port, so the address stays constant whether or not Tor is installed — which keeps a Tor install or uninstall from restarting the registry. With no Tor running, outbound requests through it get connection-refused, which the daemon tolerates.
 
 The registry's name, icon, and administrators are **not** in this file. They live in the daemon's own store and are set through the actions.
 
@@ -100,12 +100,13 @@ The port is bound on the `api-multi` MultiHost and is not masked.
 
 ## Installation and First-Run Flow
 
-Install starts the daemon and raises two tasks. Nothing is generated and no credential is shown — this service has no accounts.
+Install raises two tasks — **Configure Registry** and **Add Administrator** — and leaves the registry stopped. Nothing is generated and no credential is shown — this service has no accounts.
 
-1. **Configure Registry** — a name, and optionally an icon. This is what StartOS servers display when they add your registry.
-2. **Add Administrator** — a label, a contact, and a **PEM-encoded public key**. That key is the whole of the authorization model: administration is proving possession of the matching private key, not logging in.
+1. **Start the registry** — its addresses are on the **Web API** interface. Both tasks go through the CLI to the live daemon, so neither runs until it is up.
+2. **Configure Registry** — a name, and optionally an icon. This is what StartOS servers display when they add your registry.
+3. **Add Administrator** — a label, a contact, and an **ed25519 public key in SPKI PEM form**. That key is the whole of the authorization model: administration is proving possession of the matching private key, not logging in.
 
-Both tasks require the service to be running, since both go through the CLI to the live daemon. Both are `important`: the registry serves an empty index perfectly well without them, it just has no identity and nobody who can administer it.
+Both tasks are `important`: the registry serves an empty index without them, but it has no identity and nobody who can administer it.
 
 ## Actions
 
@@ -126,9 +127,9 @@ Registers a signer and grants it admin rights.
 
 - **What it changes:** the daemon's store — it adds a signer record with the label, contact, and public key, then grants that signer id admin.
 - **Cost:** seconds. No restart.
-- **Repeat safety:** each run adds a new administrator; it is not an edit. Running it twice with the same key yields two records.
+- **Repeat safety:** the action adds rather than edits, so every new key becomes another administrator. Re-running it with a key the daemon already holds fails, names the signer that has it, and changes nothing — it always creates the signer first, so granting admin to a signer that already exists takes the CLI: `start-cli --registry <the Web API address> registry admin add <id>` from a machine holding an admin key, or `start-registry admin add <id>` inside the container when there is no administrator yet to authenticate as.
 - **The contact is stored as a URL** — an email becomes `mailto:`, a Matrix username becomes a `matrix.to` link.
-- **The key must be a PEM public key**, checked by pattern. There is no key generation here: the private half is yours and never touches this server.
+- **The key must be an ed25519 public key in SPKI PEM form** — the `-----BEGIN PUBLIC KEY-----` block. OpenSSH's `ssh-ed25519 …` and PKCS#1's `-----BEGIN RSA PUBLIC KEY-----` are both rejected by the form itself. The pattern does not check the key type, so an RSA key in SPKI form passes the form and is then refused by the `start-registry` CLI when the action runs. There is no key generation in this package: the private half is yours and never touches this server — `start-cli init-key` creates one on the administrator's own machine and `start-cli pubkey` prints the public half in the form the pattern accepts.
 
 ### Remove Administrator
 
@@ -158,7 +159,7 @@ One check, on the only daemon.
 | --------- | --------- | ---------------------- |
 | `primary` | "Web API" | Port 5959 is listening |
 
-The daemon binds quickly, so a failure means it did not start — most often a `config.yaml` value it rejects, which it names in the service logs. Actions failing while this check is green is a different symptom: those go through the shared `/run` socket rather than the port, so a CLI error points at the daemon's store or the argument it was given, not at reachability.
+The daemon binds quickly, so a failure means it did not start — most often a `config.yaml` value it rejects, which it names in the service logs. An action failing while this check is green usually points at the daemon's store or at the argument it was given, since the actions call the same port this check probes. The check reads `/proc/net` for a socket on that port rather than connecting, so an action reporting a refused connection outranks it: sockets left behind by a dead daemon hold the port for about a minute.
 
 ## Backups and Restore
 
@@ -172,11 +173,10 @@ Both volumes are copied wholesale — `sdk.Backups.ofVolumes('config', 'main')`.
 
 1. **Administration is by public key only.** No accounts, no passwords, no web login — the private key is yours to keep.
 2. **Removing the last administrator locks you out** of everything the actions do; nothing warns you first.
-3. **Every action needs the service running**, because they reach the daemon over a shared socket rather than a network port.
-4. **The image tracks the monorepo's `master` branch** rather than a tagged release.
-5. **The manifest declares no architecture restriction**, so which architectures work is whatever the published image covers.
-6. **Categories are not configurable here yet** — the Configure Registry action sets name and icon only.
-7. **Tor is not a dependency**, and a `tor-proxy` value is written whether or not Tor is installed.
+3. **Every action needs the service running**, because they call the daemon's API port and a stopped daemon is listening on nothing.
+4. **The image is a build of the monorepo's `master` branch** rather than of a tagged release. The manifest pins one such build by digest.
+5. **Categories are set from the CLI, not from an action** — `start-cli registry package category` adds and removes them and assigns packages to them. The Configure Registry action sets name and icon.
+6. **Tor is not a dependency**, and a `tor-proxy` value is written whether or not Tor is installed.
 
 ---
 
@@ -184,11 +184,11 @@ Both volumes are copied wholesale — `sdk.Backups.ofVolumes('config', 'main')`.
 
 ```yaml
 package_id: startos-registry
-image: ghcr.io/start9labs/startos-registry # built from the monorepo's master branch
-architectures: as published by the image # the manifest declares no restriction
-subcontainers:
+image: ghcr.io/start9labs/startos-registry # pinned by digest
+architectures: [aarch64, x86_64, riscv64] # one s9pk per architecture
+subcontainers: # all sharedRun: true
   - startos-registry-sub # the running daemon
-  - get-info # temporary; one per action, all sharedRun: true
+  - get-info # temporary; one per action plus one per form-building read
   - set-info
   - add-admin
   - remove-admin
