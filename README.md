@@ -48,7 +48,7 @@ One image, published by Start9 from the monorepo's `master` branch rather than f
 | `startos-registry-sub`                                            | The `primary` daemon — the one to `attach` to                                          |
 | `get-info`, `set-info`, `add-admin`, `remove-admin`, `delete-key` | Temporary; one per action, plus one per action that reads the daemon to build its form |
 
-**Every subcontainer here is declared `sharedRun: true`, and that is the whole mechanism behind the actions.** They share the daemon's `/run`, so the `start-registry` CLI in a temporary container reaches the running `start-registryd` over its socket rather than over the network. It is also why every action requires the service to be running: with no daemon there is no socket to talk to.
+**Every subcontainer here is declared `sharedRun: true`, and that is the whole mechanism behind the actions.** `start-registryd` writes an auth cookie to `/run/startos/registry.authcookie`, and sharing `/run` is what puts that cookie in front of the `start-registry` CLI in a temporary container. The CLI then calls the daemon on `127.0.0.1:5959`, the same port the health check probes. It is also why every action requires the service to be running: a stopped daemon has written no cookie and is listening on nothing.
 
 ## Volume and Data Layout
 
@@ -159,7 +159,7 @@ One check, on the only daemon.
 | --------- | --------- | ---------------------- |
 | `primary` | "Web API" | Port 5959 is listening |
 
-The daemon binds quickly, so a failure means it did not start — most often a `config.yaml` value it rejects, which it names in the service logs. Actions failing while this check is green is a different symptom: those go through the shared `/run` socket rather than the port, so a CLI error points at the daemon's store or the argument it was given, not at reachability.
+The daemon binds quickly, so a failure means it did not start — most often a `config.yaml` value it rejects, which it names in the service logs. An action failing while this check is green points at the daemon's store or at the argument it was given: the actions call the same port this check probes, so a green check has already proven the daemon is up and reachable.
 
 ## Backups and Restore
 
@@ -173,7 +173,7 @@ Both volumes are copied wholesale — `sdk.Backups.ofVolumes('config', 'main')`.
 
 1. **Administration is by public key only.** No accounts, no passwords, no web login — the private key is yours to keep.
 2. **Removing the last administrator locks you out** of everything the actions do; nothing warns you first.
-3. **Every action needs the service running**, because they reach the daemon over a shared socket rather than a network port.
+3. **Every action needs the service running**, because they call the daemon's API port and authenticate with a cookie only the running daemon writes.
 4. **The image is a build of the monorepo's `master` branch** rather than of a tagged release. The manifest pins one such build by digest.
 5. **Categories are set from the CLI, not from an action** — `start-cli registry package category` adds and removes them and assigns packages to them. The Configure Registry action sets name and icon.
 6. **Tor is not a dependency**, and a `tor-proxy` value is written whether or not Tor is installed.
