@@ -37,11 +37,11 @@
 
 One image, published by Start9 from the monorepo's `master` branch rather than from a tagged release. The manifest pins it by digest, so every build of a given commit of this repo packs the same registry daemon.
 
-| Property      | Value                                                                   |
-| ------------- | ----------------------------------------------------------------------- |
-| Image         | `ghcr.io/start9labs/startos-registry`, pinned by digest                 |
-| Architectures | Whatever the pinned image covers — the manifest declares no restriction |
-| Command       | `start-registryd`                                                       |
+| Property      | Value                                                                             |
+| ------------- | --------------------------------------------------------------------------------- |
+| Image         | `ghcr.io/start9labs/startos-registry`, pinned by digest                           |
+| Architectures | `aarch64`, `x86_64`, `riscv64` — the SDK's default, which the pinned image covers |
+| Command       | `start-registryd`                                                                 |
 
 | Subcontainer                                                      | Purpose                                                          |
 | ----------------------------------------------------------------- | ---------------------------------------------------------------- |
@@ -174,7 +174,7 @@ Both volumes are copied wholesale — `sdk.Backups.ofVolumes('config', 'main')`.
 2. **Removing the last administrator locks you out** of everything the actions do; nothing warns you first.
 3. **Every action needs the service running**, because they reach the daemon over a shared socket rather than a network port.
 4. **The image is a build of the monorepo's `master` branch** rather than of a tagged release, pinned to one digest of it.
-5. **The manifest declares no architecture restriction**, so which architectures work is whatever the pinned image covers.
+5. **Architecture support is the SDK's default set** — `aarch64`, `x86_64` and `riscv64`, because the image declares no `arch` of its own — so the pinned image has to cover all three.
 6. **Categories are not configurable here yet** — the Configure Registry action sets name and icon only.
 7. **Tor is not a dependency**, and a `tor-proxy` value is written whether or not Tor is installed.
 
@@ -185,7 +185,7 @@ Both volumes are copied wholesale — `sdk.Backups.ofVolumes('config', 'main')`.
 ```yaml
 package_id: startos-registry
 image: ghcr.io/start9labs/startos-registry # pinned by digest; a build of the monorepo's master branch
-architectures: as covered by the pinned image # the manifest declares no restriction
+architectures: [aarch64, x86_64, riscv64] # the SDK default; the pinned image covers all three
 subcontainers:
   - startos-registry-sub # the running daemon
   - get-info # temporary; one per action, all sharedRun: true

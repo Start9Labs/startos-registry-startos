@@ -4,7 +4,7 @@ This is a Start9 Labs first-party package. The registry server (`start-registry`
 
 `start-registry` is versioned **independently** of the StartOS platform (starting at `1.0.0`); its version lives in `projects/start-registry/Cargo.toml`, and a release is cut as a `start-registry/vX.Y.Z` git tag. The package `version` in `startos/versions/current.ts` tracks the version the pinned image reports, which is what `Cargo.toml` declared on the commit that image was built from.
 
-Upstream CI tags each image with the ref it was built from — `:master` for the branch, `:<n>-merge` for a pull request — so no tag ever names a release. The manifest therefore pins the image **by digest**, so that rebuilding a given commit of this repo packs the same registry daemon it packed the first time. A bump re-resolves that digest as well as the `version` string, and the two move in the same commit: the digest picks one `start-registry` build, and `version` is what the package tells users that build is.
+Upstream CI tags each image with the ref it was built from — `:master` for the branch, `:<n>-merge` for a pull request — so no tag ever names a release. The manifest therefore pins the image **by digest**, so that rebuilding a given commit of this repo packs the same registry daemon it packed the first time. A bump re-resolves that digest; the `version` string moves with it in the same commit, unless the new build reports the version the package already declares. The digest picks one `start-registry` build, and `version` is what the package tells users that build is.
 
 ## Determining the upstream version
 
@@ -18,7 +18,7 @@ Upstream CI tags each image with the ref it was built from — `:master` for the
     --jq '.content' | base64 -d | grep '^version'
   ```
 
-`master` keeps declaring the newest tag's version until the next release bumps `Cargo.toml`, so the two agree for most of a release cycle even while `master` moves on. The pinned image settles which number the package declares, and the next section reads it out of the image.
+Expect these two to disagree. Upstream raises `Cargo.toml` to the next, still-unreleased version as soon as the first change after a release lands, and cuts the `start-registry/vX.Y.Z` tag when that version ships — so `master` declares a version no tag names for as long as a release is accumulating. The pinned image settles which number the package declares, and the next section reads it out of the image.
 
 ## Resolving the image digest
 
@@ -56,16 +56,25 @@ docker buildx imagetools inspect "ghcr.io/start9labs/startos-registry@$DIGEST" \
   --format '{{.Manifest.MediaType}}'
 ```
 
-An index prints `application/vnd.oci.image.index.v1+json`; a per-architecture child prints `application/vnd.oci.image.manifest.v1+json`.
+or, reusing the `$TOKEN` from the runtime-free resolve above — `podman` has no `imagetools`:
 
-Then confirm the digest carries the version you are about to declare. This step needs a container runtime — the image carries no label or annotation naming its version:
+```
+curl -sS --fail -o /dev/null -w '%{content_type}\n' \
+  -H "Authorization: Bearer $TOKEN" \
+  -H 'Accept: application/vnd.oci.image.index.v1+json, application/vnd.oci.image.manifest.v1+json' \
+  "https://ghcr.io/v2/start9labs/startos-registry/manifests/$DIGEST"
+```
+
+An index prints `application/vnd.oci.image.index.v1+json`; a per-architecture child prints `application/vnd.oci.image.manifest.v1+json`. Run it even if you expect the build to catch the mistake: `docker` refuses a child at `create` time, but `podman` only warns, so a `podman` build of all three architectures succeeds with a child pinned.
+
+Then confirm the digest carries the version you are about to declare. This step runs the image, because it carries no label or annotation naming its version. `podman run` works the same way:
 
 ```
 docker run --rm --entrypoint start-registry \
   "ghcr.io/start9labs/startos-registry@$DIGEST" --version
 ```
 
-Going the other way — to find out which monorepo commit a digest already in the manifest was built from — read the provenance attestation that buildx pushes beside the image. This reads the pin out of the manifest, which is not necessarily the digest you just resolved:
+Going the other way — to find out which monorepo commit a digest was built from — read the provenance attestation that buildx pushes beside the image. This reads whichever digest the manifest currently holds, so it names the outgoing build before you edit the pin and the incoming build after:
 
 ```
 PINNED=$(grep -o 'sha256:[0-9a-f]\{64\}' startos/manifest/index.ts)
@@ -79,11 +88,12 @@ docker buildx imagetools inspect "ghcr.io/start9labs/startos-registry@$PINNED" \
 ## Applying the bump
 
 - Set `images['startos-registry'].source.dockerTag` in `startos/manifest/index.ts` to `ghcr.io/start9labs/startos-registry@` followed by the resolved digest.
-- Set `version` in `startos/versions/current.ts` to `<registry version>:0`, matching the version that digest reports, and write release notes for what that version changed (see `projects/start-registry/CHANGELOG.md`). Check for a `start-registry/v<registry version>` tag first: without one the pin is a pre-release build, and that version's CHANGELOG section can still gain entries, so take notes only for the changes the pinned commit already carries.
-- Re-pinning the digest of a version this repo has already released is a revision bump instead — `<registry version>:<n+1>`, where `n` is the revision already in `startos/versions/current.ts` — because the image content changed even though its version string did not. Write release notes for what the new image changed.
-- A version this repo has not released yet has no `v<version>_<n>` tag, which `git ls-remote --tags origin` shows. Re-resolve its digest in place and leave the version string alone.
-- Build every architecture — the digest has to resolve for each one:
+- Then set `version` in `startos/versions/current.ts`. Two questions decide it: what version does the new digest report, and has this repo already released the `<version>:<n>` that `current.ts` declares? `git ls-remote --tags origin` answers the second — a released revision is there as `v<version>_<n>`.
+  - **The digest reports a version `current.ts` does not declare.** Set `version` to `<registry version>:0` and write release notes for what that version changed (see `projects/start-registry/CHANGELOG.md`). Check for a `start-registry/v<registry version>` tag first: without one the pin is a pre-release build, and that version's CHANGELOG section can still gain entries, so take notes only for the changes the pinned commit already carries — the provenance step above names that commit once the manifest holds the new digest.
+  - **The same version, and this repo has not released the revision `current.ts` declares.** Leave the version string alone. Read the release notes against the CHANGELOG even so: the section of a version upstream has not tagged stays open, so it can have gained entries since those notes were written.
+  - **The same version, and this repo has released that revision.** Set `version` to `<registry version>:<n+1>`, where `n` is the revision `current.ts` declares, because the image content changed even though its version string did not. Write release notes for what the new image changed.
+- Build all three architectures:
   ```
   make
   ```
-  `make` prints the packed version once per architecture. That string comes from `startos/versions/current.ts` rather than from the image, so it confirms the edit reached all three s9pks and nothing more; the image's own version is the one `docker run … --version` reported above, and the two have to agree. The packed manifest records the image as `packed` rather than as a reference, because `pack` copies the image content into the s9pk. The digest lives in this repo alone, which is what makes the repo the record of what a build shipped.
+  The image entry declares `aarch64`, `x86_64` and `riscv64` in the packed manifest — the SDK's default, since the source names no `arch` — so the pinned index has to cover all three. The packed manifest records the image as `packed` rather than as a reference, because `pack` copies the image content into the s9pk, so this repo is the only record of which digest a build shipped.
