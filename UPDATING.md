@@ -22,14 +22,14 @@ These two need not agree. Upstream raises `Cargo.toml` and cuts the `start-regis
 
 ## Resolving the image digest
 
-`:master` is rebuilt on every push to the monorepo's `master` that touches any build input listed under `push.paths` in `.github/workflows/start-registry.yaml` — the workspace `Cargo.lock`, `build/` and `debian/` among them — so it moves for changes that have nothing to do with `start-registry`. Resolve it to the digest it points at right now rather than reasoning about whether it has moved:
+`:master` is rebuilt on every push to the monorepo's `master` that touches any build input listed under `push.paths` in `.github/workflows/start-registry.yaml` — the workspace `Cargo.lock`, `build/` and `debian/` among them — so it moves for changes that have nothing to do with `start-registry`. It also moves when someone runs that workflow by hand from the Actions tab. Resolve it to the digest it points at right now rather than reasoning about whether it has moved:
 
 ```
 DIGEST=$(docker buildx imagetools inspect ghcr.io/start9labs/startos-registry:master \
   --format '{{.Manifest.Digest}}')
 ```
 
-`podman` has no `imagetools` subcommand. Use the form below with `podman`, or with no container runtime at all:
+`podman` has no `imagetools` subcommand. Use the two blocks below with `podman`, or with no container runtime at all — the first mints a pull token, the second resolves the tag:
 
 ```
 TOKEN=$(curl -sS --fail 'https://ghcr.io/token?scope=repository:start9labs/startos-registry:pull&service=ghcr.io' | jq -e -r .token)
@@ -102,7 +102,7 @@ docker run --rm --entrypoint start-registry \
 Going the other way — to find out which monorepo commit a digest was built from — read the provenance attestation that buildx pushes beside the image. The assignment below is a snapshot of the manifest, not a live read: it names the outgoing build until you edit the pin, and the incoming build once you have. Run it from the repo root, and run it again after every edit to the pin:
 
 ```
-PINNED=$(grep -o 'startos-registry@sha256:[0-9a-f]\{64\}' startos/manifest/index.ts | sed 's|.*@||')
+PINNED=$(grep -oE 'startos-registry@sha256:[0-9a-f]+' startos/manifest/index.ts | sed 's|.*@||')
 ```
 
 ```
@@ -143,11 +143,11 @@ curl -sSL --fail -H "Authorization: Bearer $TOKEN" "$REPO/blobs/$BLOB" |
              "\(.repository.full_name) \(.ref // .pull_request.head.ref) \($sha)" end'
 ```
 
-On an index carrying amd64 provenance both print one line: the monorepo, then the ref and the commit the pin was built from. The monorepo prints as `Start9Labs/start-technologies`, or as `Start9Labs/start-os` for a build from before the rename. A pull-request build names its own branch and head commit, and its image is built from that commit merged into its base. On anything else both raise and exit non-zero. A `curl: (22)` line is an HTTP failure rather than the guard rejecting the digest, and it carries the status. A `404` means `$PINNED` is empty or names a digest GHCR does not hold, so print it again and check it against the manifest. Any other status points at the token, so mint it again.
+On an index carrying amd64 provenance both print one line: the monorepo, then the ref and the commit the pin was built from. The monorepo prints as `Start9Labs/start-technologies`, or as `Start9Labs/start-os` for a build from before the rename. A pull-request build names its own branch and head commit, and its image is built from that commit merged into its base. On anything else both raise and exit non-zero. `this provenance names no commit` means the build was started by hand from the Actions tab rather than by a push; such a build can carry upstream's `dev` feature set, so wait for the next push build rather than pinning it. A `curl: (22)` line is an HTTP failure rather than the guard rejecting the digest, and it carries the status. A `404` means `$PINNED` is empty or names a digest GHCR does not hold, so print it again and check it against the manifest. Any other status points at the token, so mint it again.
 
 ## Applying the bump
 
-- Compare the resolved digest against the one the manifest holds — `grep -o 'startos-registry@sha256:[0-9a-f]\{64\}' startos/manifest/index.ts | sed 's|.*@||'` prints the current pin. If they differ, set `images['startos-registry'].source.dockerTag` in `startos/manifest/index.ts` to `ghcr.io/start9labs/startos-registry@` followed by the resolved digest.
+- Compare the resolved digest against the one the manifest holds — `grep -oE 'startos-registry@sha256:[0-9a-f]+' startos/manifest/index.ts | sed 's|.*@||'` prints the current pin. If they differ, set `images['startos-registry'].source.dockerTag` in `startos/manifest/index.ts` to `ghcr.io/start9labs/startos-registry@` followed by the resolved digest.
 - Then set `version` in `startos/versions/current.ts`. Three questions decide it: is the resolved digest the one the manifest already held, what version does the new digest report, and what has this repo already released? The comparison above answers the first, the version check answers the second, and `git ls-remote --tags https://github.com/Start9Labs/startos-registry-startos.git 'refs/tags/v*' | sort -V -k2` answers the third — every released revision is there as `v<version>_<n>`.
   - **The digest is the one the manifest already held.** `:master` still points at the build the manifest pins, so there is no new image to package: leave the manifest alone. Leave the version string alone as well, unless the version check reported a version `current.ts` does not declare — a version string that disagrees with the pinned image is wrong whether or not the digest moved. In that case set `version` to `<registry version>:0` — or to `<registry version>:<n+1>` if the tag list already shows a `v<registry version>_<n>`, taking the highest `n` it shows — and write the release notes from the commit the provenance step above already named. If `current.ts` declares a version upstream has not tagged, read its release notes against the CHANGELOG even so: that section stays open, so it can have gained entries since those notes were written.
   - **A new digest, reporting a version `current.ts` does not declare.** Set `version` to `<registry version>:0` — or to `<registry version>:<n+1>` if the tag list already shows a `v<registry version>_<n>`, taking the highest `n` it shows. That happens when this repo's work branch was cut before that version shipped. Run the provenance step above once the manifest holds the new digest: it names the commit the pin was built from. Write release notes for what that commit carries, reading `projects/start-registry/CHANGELOG.md` against it rather than copying the section. The section can run ahead of the pin, where entries landed after it, and behind the pin, where the pin sits on a commit later than the tag. Without a `start-registry/v<registry version>` tag the pin is a pre-release build and that section is still open.
