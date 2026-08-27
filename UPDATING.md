@@ -130,7 +130,7 @@ ATTESTATION=$(curl -sS --fail -H "Authorization: Bearer $TOKEN" \
   -H 'Accept: application/vnd.oci.image.index.v1+json, application/vnd.oci.image.manifest.v1+json' \
   "$REPO/manifests/$PINNED" |
   jq -e -r '(.manifests // []) as $m
-         | ($m | map(select(.platform.architecture == "amd64")) | .[0].digest) as $child
+         | ($m | map(select(.platform.os == "linux" and .platform.architecture == "amd64")) | .[0].digest) as $child
          | ($m | map(select($child != null and .annotations["vnd.docker.reference.digest"] == $child)) | .[0].digest)
            // error("no linux/amd64 provenance at this digest — it is a per-architecture child, an attestation manifest, a single-platform index, or a build that published no attestation")') &&
 BLOB=$(curl -sS --fail -H "Authorization: Bearer $TOKEN" \
@@ -140,6 +140,7 @@ BLOB=$(curl -sS --fail -H "Authorization: Bearer $TOKEN" \
 curl -sSL --fail -H "Authorization: Bearer $TOKEN" "$REPO/blobs/$BLOB" |
   jq -e -r '(.predicate.buildDefinition.internalParameters.github_event_payload
              // .predicate.invocation.environment.github_event_payload)
+         // error("no linux/amd64 provenance at this digest — it is a per-architecture child, an attestation manifest, a single-platform index, or a build that published no attestation")
          | (.after // .pull_request.head.sha) as $sha
          | if $sha == null then error("this provenance names no commit") else
              "\(.repository.full_name) \(.ref // .pull_request.head.ref) \($sha)" end'
