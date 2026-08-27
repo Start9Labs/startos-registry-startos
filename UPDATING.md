@@ -92,7 +92,7 @@ curl -sS --fail -H "Authorization: Bearer $TOKEN" \
 
 Both print `all three architectures present`, or name what the digest does carry and exit non-zero. A `curl: (22)` line is an HTTP failure rather than the guard rejecting the digest: `404` for a digest GHCR does not hold, anything else for the token. A pull-request build can be single-architecture, so a digest that is genuinely an index still needs this check.
 
-Then confirm the digest carries the version you are about to declare. This step runs the image, because it carries no label or annotation naming its version. `podman run` works the same way. With no container runtime, set `PINNED="$DIGEST"`, run the provenance step below as printed, and read `Cargo.toml` at the commit it names — the `gh api` form in "Determining the upstream version" above, with `master` in its URL replaced by that commit. For a branch build such as `:master`, the image reports the version that commit declared.
+Then confirm the digest carries the version you are about to declare. This step runs the image, because it carries no label or annotation naming its version. `podman run` works the same way. With no container runtime, run the provenance step below with `PINNED="$DIGEST"` in place of its `PINNED=` block; the rest of it needs no edit. Read `Cargo.toml` at the commit it names, using the `gh api` form in "Determining the upstream version" above with `master` in its URL replaced by that commit. For a branch build such as `:master`, the image reports the version that commit declared.
 
 ```
 docker run --rm --entrypoint start-registry \
