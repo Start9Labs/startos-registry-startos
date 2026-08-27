@@ -68,7 +68,7 @@ curl -sS --fail -o /dev/null -w '%{content_type}\n' \
   "https://ghcr.io/v2/start9labs/startos-registry/manifests/$DIGEST"
 ```
 
-An index prints `application/vnd.oci.image.index.v1+json`; a per-architecture child prints `application/vnd.oci.image.manifest.v1+json`. Anything else means the request failed rather than answered: an unset `$TOKEN` or an empty `$DIGEST` prints `text/plain; charset=utf-8` under a `curl: (22)` line. Run the check even when you expect the build to catch the mistake — `docker buildx imagetools inspect` without `--format` lists the children next to the index, so the wrong line is an easy copy.
+An index prints `application/vnd.oci.image.index.v1+json`. Everything an index lists prints `application/vnd.oci.image.manifest.v1+json` — the per-architecture children, and the attestation manifests that sit beside them. Anything else means the request failed rather than answered: an unset `$TOKEN` or an empty `$DIGEST` prints `text/plain; charset=utf-8` under a `curl: (22)` line. Run the check even when you expect the build to catch the mistake — `docker buildx imagetools inspect` without `--format` lists all of them next to the index, so the wrong line is an easy copy.
 
 An index still has to carry a child for every architecture `make` builds, and a partial one passes the check above because it is an index. Confirm all three are there:
 
