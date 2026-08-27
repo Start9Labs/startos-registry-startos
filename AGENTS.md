@@ -26,7 +26,7 @@ verified, tried, and decided belongs in the commit message and the PR body.
 
 ## This repo
 
-- **`sharedRun: true` on every subcontainer is what makes the actions work.** `start-registryd` writes an auth cookie to `/run/startos/registry.authcookie`; sharing `/run` is what lets the `start-registry` CLI find it, and the CLI then calls the daemon on `127.0.0.1:5959`. Drop `sharedRun` and every action fails `` `--registry` required ``. It is also why all three are `only-running`.
+- **`sharedRun: true` on every subcontainer is what makes the actions work.** `start-registryd` writes an auth cookie to `/run/startos/registry.authcookie`; sharing `/run` is what lets the `start-registry` CLI find it, and the CLI then calls the daemon on `127.0.0.1:5959`. That port is not configurable from here: the action subcontainers mount no `config.yaml`, so the CLI never sees `registry-listen` and falls back to start-core's own default, which is why `apiPort` has to stay 5959. Drop `sharedRun` and every action fails `` `--registry` required ``. It is also why all three are `only-running`.
 - **Tor is intentionally not a declared dependency**, even though `tor-startos/startos/utils` is imported for its host id and port. Declaring it would turn an optional path into an install requirement.
 - **`registry-hostname` must be rebuilt from the live address set, not appended to.** The daemon serves and signs against the hostnames it knows, so a removed address has to leave the list too — hence the array comparison before writing.
 - **Name, icon, and administrators live in the daemon's own store, not `config.yaml`.** Don't add them to the file model; the CLI is the only writer and the actions pre-fill from the live daemon.
