@@ -102,14 +102,14 @@ docker run --rm --entrypoint start-registry \
 Going the other way — to find out which monorepo commit a digest was built from — read the provenance attestation that buildx pushes beside the image. The assignment below is a snapshot of the manifest, not a live read: it names the outgoing build until you edit the pin, and the incoming build once you have. Run it from the repo root, and run it again after every edit to the pin:
 
 ```
-PINNED=$(sed -n 's|.*startos-registry@\(sha256:[0-9a-f]\{64\}\).*|\1|p' startos/manifest/index.ts)
+PINNED=$(grep -o 'startos-registry@sha256:[0-9a-f]\{64\}' startos/manifest/index.ts | sed 's|.*@||')
 ```
 
 ```
 echo "$PINNED"
 ```
 
-One `sha256:` line is the pin, and the step below takes exactly one. Two lines mean the manifest holds a second digest. An empty line means the manifest holds no digest, or that `sed` ran outside the repo root, in which case `sed` says so above.
+One `sha256:` line is the pin, and the step below takes exactly one. Two lines mean the manifest holds a second digest. An empty line means the manifest holds no digest, or that the command ran outside the repo root, in which case `grep` says so above.
 
 ```
 docker buildx imagetools inspect "ghcr.io/start9labs/startos-registry@$PINNED" \
@@ -147,7 +147,7 @@ On an index carrying amd64 provenance both print one line: the monorepo, then th
 
 ## Applying the bump
 
-- Compare the resolved digest against the one the manifest holds — `sed -n 's|.*startos-registry@\(sha256:[0-9a-f]\{64\}\).*|\1|p' startos/manifest/index.ts` prints the current pin. If they differ, set `images['startos-registry'].source.dockerTag` in `startos/manifest/index.ts` to `ghcr.io/start9labs/startos-registry@` followed by the resolved digest.
+- Compare the resolved digest against the one the manifest holds — `grep -o 'startos-registry@sha256:[0-9a-f]\{64\}' startos/manifest/index.ts | sed 's|.*@||'` prints the current pin. If they differ, set `images['startos-registry'].source.dockerTag` in `startos/manifest/index.ts` to `ghcr.io/start9labs/startos-registry@` followed by the resolved digest.
 - Then set `version` in `startos/versions/current.ts`. Three questions decide it: is the resolved digest the one the manifest already held, what version does the new digest report, and what has this repo already released? The comparison above answers the first, the version check answers the second, and `git ls-remote --tags https://github.com/Start9Labs/startos-registry-startos.git 'refs/tags/v*' | sort -V -k2` answers the third — every released revision is there as `v<version>_<n>`.
   - **The digest is the one the manifest already held.** `:master` still points at the build the manifest pins, so there is no new image to package: leave the manifest alone. Leave the version string alone as well, unless the version check reported a version `current.ts` does not declare — a version string that disagrees with the pinned image is wrong whether or not the digest moved. Set `version` to `<registry version>:0`, or to `<registry version>:<n+1>` taking the highest `n` the tag list shows for that version, and write the release notes from the commit the provenance step above already named. If `current.ts` declares a version upstream has not tagged, read its release notes against the CHANGELOG even so: that section stays open, so it can have gained entries since those notes were written.
   - **A new digest, reporting a version `current.ts` does not declare.** Set `version` to `<registry version>:0` — or to `<registry version>:<n+1>` if the tag list already shows a `v<registry version>_<n>`, taking the highest `n` it shows. That happens when this repo's work branch was cut before that version shipped. Run the provenance step above once the manifest holds the new digest: it names the commit the pin was built from. Write release notes for what that commit carries, reading `projects/start-registry/CHANGELOG.md` against it rather than copying the section. The section can run ahead of the pin, where entries landed after it, and behind the pin, where the pin sits on a commit later than the tag. Without a `start-registry/v<registry version>` tag the pin is a pre-release build and that section is still open.
