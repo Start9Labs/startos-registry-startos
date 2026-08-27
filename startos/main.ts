@@ -7,11 +7,8 @@ import { apiPort, mountpoint } from './utils'
 export const main = sdk.setupMain(async ({ effects }) => {
   console.info(i18n('Starting StartOS Registry!'))
 
-  // start-registryd's outbound Tor SOCKS proxy over the bridge. The bridge
-  // address only changes on tor install/uninstall/port-change, and the 9050
-  // fallback keeps it constant while tor is absent, so this .const() never
-  // restarts the registry on tor churn. A dead proxy just connection-refuses,
-  // which the registry tolerates.
+  // The fallback port keeps this address constant while tor is absent, so
+  // .const() does not restart the registry when tor is installed or removed.
   const torProxy = await sdk.host
     .getBridgeAddress(effects, {
       packageId: 'tor',

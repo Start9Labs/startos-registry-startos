@@ -78,7 +78,7 @@ One model, holding the daemon's whole configuration. Everything else the registr
 
 **`registry-hostname` is the one that matters operationally.** The daemon serves and signs against the hostnames it knows, so init rebuilds the list from the addresses actually published and rewrites the file whenever the set changes. Add a domain to this service and it is in the config on the next start, with nothing to run by hand.
 
-**`tor-proxy` is always written, even with Tor absent.** The bridge lookup carries a fallback port, so the address stays constant whether or not Tor is installed — which keeps a Tor install or uninstall from restarting the registry. With no Tor running, outbound requests through it simply get connection-refused, which the daemon tolerates.
+**`tor-proxy` is always written, even with Tor absent.** The bridge lookup carries a fallback port, so the address stays constant whether or not Tor is installed — which keeps a Tor install or uninstall from restarting the registry. With no Tor running, outbound requests through it get connection-refused, which the daemon tolerates.
 
 The registry's name, icon, and administrators are **not** in this file. They live in the daemon's own store and are set through the actions.
 
@@ -106,7 +106,7 @@ Install raises two tasks — **Configure Registry** and **Add Administrator** �
 2. **Configure Registry** — a name, and optionally an icon. This is what StartOS servers display when they add your registry.
 3. **Add Administrator** — a label, a contact, and an **ed25519 public key in SPKI PEM form**. That key is the whole of the authorization model: administration is proving possession of the matching private key, not logging in.
 
-Both tasks are `important`: the registry serves an empty index perfectly well without them, it just has no identity and nobody who can administer it.
+Both tasks are `important`: the registry serves an empty index without them, but it has no identity and nobody who can administer it.
 
 ## Actions
 
