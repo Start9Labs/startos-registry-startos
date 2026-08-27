@@ -43,10 +43,10 @@ One image, published by Start9 from the monorepo's `master` branch rather than f
 | Architectures | `aarch64`, `x86_64`, `riscv64` — one s9pk each          |
 | Command       | `start-registryd`                                       |
 
-| Subcontainer                                                      | Purpose                                                          |
-| ----------------------------------------------------------------- | ---------------------------------------------------------------- |
-| `startos-registry-sub`                                            | The `primary` daemon — the one to `attach` to                    |
-| `get-info`, `set-info`, `add-admin`, `remove-admin`, `delete-key` | Temporary; one per action, each running the `start-registry` CLI |
+| Subcontainer                                                      | Purpose                                                                                                 |
+| ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `startos-registry-sub`                                            | The `primary` daemon — the one to `attach` to                                                           |
+| `get-info`, `set-info`, `add-admin`, `remove-admin`, `delete-key` | Temporary; one per `start-registry` call, so an action that reads the daemon to build its form uses two |
 
 **Every subcontainer here is declared `sharedRun: true`, and that is the whole mechanism behind the actions.** They share the daemon's `/run`, so the `start-registry` CLI in a temporary container reaches the running `start-registryd` over its socket rather than over the network. It is also why every action requires the service to be running: with no daemon there is no socket to talk to.
 
@@ -188,7 +188,7 @@ image: ghcr.io/start9labs/startos-registry # pinned by digest
 architectures: [aarch64, x86_64, riscv64] # one s9pk per architecture
 subcontainers:
   - startos-registry-sub # the running daemon
-  - get-info # temporary; one per action, all sharedRun: true
+  - get-info # temporary; one per start-registry call, all sharedRun: true
   - set-info
   - add-admin
   - remove-admin
