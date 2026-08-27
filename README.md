@@ -35,12 +35,12 @@
 
 ## Image and Container Runtime
 
-One image, published by Start9 from the monorepo's `master` branch rather than from a tagged release — so the registry daemon a given package version ships is whatever `master` held when it was built.
+One image, published by Start9 from the monorepo's `master` branch rather than from a tagged release. The manifest pins it by digest, so every build of a given package version packs the same registry daemon.
 
 | Property      | Value                                                               |
 | ------------- | ------------------------------------------------------------------- |
-| Image         | `ghcr.io/start9labs/startos-registry`                               |
-| Architectures | Whatever the image publishes — the manifest declares no restriction |
+| Image         | `ghcr.io/start9labs/startos-registry`, pinned by digest             |
+| Architectures | Whatever the pinned image covers — the manifest declares none       |
 | Command       | `start-registryd`                                                   |
 
 | Subcontainer                                                      | Purpose                                                          |
@@ -173,8 +173,8 @@ Both volumes are copied wholesale — `sdk.Backups.ofVolumes('config', 'main')`.
 1. **Administration is by public key only.** No accounts, no passwords, no web login — the private key is yours to keep.
 2. **Removing the last administrator locks you out** of everything the actions do; nothing warns you first.
 3. **Every action needs the service running**, because they reach the daemon over a shared socket rather than a network port.
-4. **The image tracks the monorepo's `master` branch** rather than a tagged release.
-5. **The manifest declares no architecture restriction**, so which architectures work is whatever the published image covers.
+4. **The image is a build of the monorepo's `master` branch** rather than of a tagged release, pinned to one digest of it.
+5. **The manifest declares no architecture restriction**, so which architectures work is whatever the pinned image covers.
 6. **Categories are not configurable here yet** — the Configure Registry action sets name and icon only.
 7. **Tor is not a dependency**, and a `tor-proxy` value is written whether or not Tor is installed.
 
@@ -184,8 +184,8 @@ Both volumes are copied wholesale — `sdk.Backups.ofVolumes('config', 'main')`.
 
 ```yaml
 package_id: startos-registry
-image: ghcr.io/start9labs/startos-registry # built from the monorepo's master branch
-architectures: as published by the image # the manifest declares no restriction
+image: ghcr.io/start9labs/startos-registry # pinned by digest; a build of the monorepo's master branch
+architectures: as covered by the pinned image # the manifest declares no restriction
 subcontainers:
   - startos-registry-sub # the running daemon
   - get-info # temporary; one per action, all sharedRun: true
