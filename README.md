@@ -127,7 +127,7 @@ Registers a signer and grants it admin rights.
 
 - **What it changes:** the daemon's store — it adds a signer record with the label, contact, and public key, then grants that signer id admin.
 - **Cost:** seconds. No restart.
-- **Repeat safety:** the action adds rather than edits, so every new key becomes another administrator. Re-running it with a key the daemon already holds fails, names the signer that has it, and changes nothing — it always creates the signer first, so granting admin to a signer that already exists has to go through `start-cli registry admin add <id>`.
+- **Repeat safety:** the action adds rather than edits, so every new key becomes another administrator. Re-running it with a key the daemon already holds fails, names the signer that has it, and changes nothing — it always creates the signer first, so granting admin to a signer that already exists takes the CLI: `start-cli registry admin add <id>` from a machine holding an admin key, or `start-registry admin add <id>` inside the container when there is no administrator yet to authenticate as.
 - **The contact is stored as a URL** — an email becomes `mailto:`, a Matrix username becomes a `matrix.to` link.
 - **The key must be an ed25519 public key in SPKI PEM form** — the `-----BEGIN PUBLIC KEY-----` block. OpenSSH's `ssh-ed25519 …` and PKCS#1's `-----BEGIN RSA PUBLIC KEY-----` are both rejected by the form itself. The pattern does not check the key type, so an RSA key in SPKI form passes the form and is then refused by the `start-registry` CLI when the action runs. There is no key generation in this package: the private half is yours and never touches this server — `start-cli init-key` creates one on the administrator's own machine and `start-cli pubkey` prints the public half in the form the pattern accepts.
 
@@ -159,7 +159,7 @@ One check, on the only daemon.
 | --------- | --------- | ---------------------- |
 | `primary` | "Web API" | Port 5959 is listening |
 
-The daemon binds quickly, so a failure means it did not start — most often a `config.yaml` value it rejects, which it names in the service logs. An action failing while this check is green usually points at the daemon's store or at the argument it was given, since the actions call the same port this check probes. The check reads `/proc/net/tcp` for a socket on that port rather than connecting, so an action reporting a refused connection outranks it: sockets left behind by a dead daemon hold the port for about a minute.
+The daemon binds quickly, so a failure means it did not start — most often a `config.yaml` value it rejects, which it names in the service logs. An action failing while this check is green usually points at the daemon's store or at the argument it was given, since the actions call the same port this check probes. The check reads `/proc/net` for a socket on that port rather than connecting, so an action reporting a refused connection outranks it: sockets left behind by a dead daemon hold the port for about a minute.
 
 ## Backups and Restore
 

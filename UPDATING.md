@@ -48,7 +48,7 @@ Both forms leave the digest — the `sha256:` prefix and the hex together — in
 echo "$DIGEST"
 ```
 
-An empty line means the resolve failed. The manifest wants that value with `ghcr.io/start9labs/startos-registry@` in front of it.
+An empty line means the resolve failed, and `docker` or `curl` says why above — a `403` there means `$TOKEN` is empty or stale, so run the `TOKEN=` block again. The manifest wants that value with `ghcr.io/start9labs/startos-registry@` in front of it.
 
 Pin that digest — the multi-architecture index — and not one of the per-architecture children it lists. `start-cli` gives each build a `--platform` of its own — `linux/amd64` for `x86_64`, `linux/arm64` for `aarch64`, `linux/riscv64` for `riscv64` — and a child digest answers for one platform only. Pin a child and `docker` refuses to create the container, so the build stops. `podman` takes it instead: podman warns, `start-cli` discards that warning, and every s9pk ends up carrying that one architecture's rootfs under a manifest still declaring the architecture it was packed for. `make` prints its usual per-architecture success summary and exits `0`. `start-cli` builds with `podman` whenever `docker` is off `PATH`, and also whenever `STARTOS_USE_PODMAN` is set to `1`, `true`, `y` or `yes`.
 
@@ -99,10 +99,10 @@ docker run --rm --entrypoint start-registry \
   "ghcr.io/start9labs/startos-registry@$DIGEST" --version
 ```
 
-Going the other way — to find out which monorepo commit a digest was built from — read the provenance attestation that buildx pushes beside the image. The assignment below is a snapshot of the manifest, not a live read: it names the outgoing build until you edit the pin, and the incoming build once you have. Run it from the repo root, and run it again after every edit to the pin:
+Going the other way — to find out which monorepo commit a digest was built from — read the provenance attestation that buildx pushes beside the image. The assignment below is a snapshot of the manifest, not a live read: it names the outgoing build until you edit the pin, and the incoming build once you have. Run it from the repo root, and run it again after every edit to the pin. Skip it where the version check above already set `PINNED` by hand: running it there replaces that value with the outgoing pin.
 
 ```
-PINNED=$(grep -oE 'startos-registry@sha256:[0-9a-f]+' startos/manifest/index.ts | sed 's|.*@||')
+PINNED=$(grep -o "'ghcr.io/start9labs/startos-registry@sha256:[0-9a-f]\{64\}'" startos/manifest/index.ts | sed "s|.*@||; s|'||")
 ```
 
 ```
@@ -114,7 +114,8 @@ One `sha256:` line is the pin, and the step below takes exactly one. Two lines m
 ```
 docker buildx imagetools inspect "ghcr.io/start9labs/startos-registry@$PINNED" \
   --format '{{json .Provenance}}' |
-  jq -e -r '.["linux/amd64"].SLSA.buildDefinition.internalParameters.github_event_payload
+  jq -e -r '(.["linux/amd64"].SLSA.buildDefinition.internalParameters.github_event_payload
+             // .["linux/amd64"].SLSA.invocation.environment.github_event_payload)
             // error("no linux/amd64 provenance at this digest — it is a per-architecture child, an attestation manifest, a single-platform index, or a build that published no attestation")
             | (.after // .pull_request.head.sha) as $sha
             | if $sha == null then error("this provenance names no commit") else
@@ -137,7 +138,8 @@ BLOB=$(curl -sS --fail -H "Authorization: Bearer $TOKEN" \
   jq -e -r '.layers | map(select((.annotations["in-toto.io/predicate-type"] // "") | test("slsa.dev/provenance")))
          | .[0].digest // error("this attestation carries no SLSA provenance layer")') &&
 curl -sSL --fail -H "Authorization: Bearer $TOKEN" "$REPO/blobs/$BLOB" |
-  jq -e -r '.predicate.buildDefinition.internalParameters.github_event_payload
+  jq -e -r '(.predicate.buildDefinition.internalParameters.github_event_payload
+             // .predicate.invocation.environment.github_event_payload)
          | (.after // .pull_request.head.sha) as $sha
          | if $sha == null then error("this provenance names no commit") else
              "\(.repository.full_name) \(.ref // .pull_request.head.ref) \($sha)" end'
@@ -147,7 +149,7 @@ On an index carrying amd64 provenance both print one line: the monorepo, then th
 
 ## Applying the bump
 
-- Compare the resolved digest against the one the manifest holds — `grep -oE 'startos-registry@sha256:[0-9a-f]+' startos/manifest/index.ts | sed 's|.*@||'` prints the current pin. If they differ, set `images['startos-registry'].source.dockerTag` in `startos/manifest/index.ts` to `ghcr.io/start9labs/startos-registry@` followed by the resolved digest.
+- Compare the resolved digest against the one the manifest holds — `grep -o "'ghcr.io/start9labs/startos-registry@sha256:[0-9a-f]\{64\}'" startos/manifest/index.ts | sed "s|.*@||; s|'||"` prints the current pin. If they differ, set `images['startos-registry'].source.dockerTag` in `startos/manifest/index.ts` to `ghcr.io/start9labs/startos-registry@` followed by the resolved digest.
 - Then set `version` in `startos/versions/current.ts`. Three questions decide it: is the resolved digest the one the manifest already held, what version does the new digest report, and what has this repo already released? The comparison above answers the first, the version check answers the second, and `git ls-remote --tags https://github.com/Start9Labs/startos-registry-startos.git 'refs/tags/v*' | sort -V -k2` answers the third — every released revision is there as `v<version>_<n>`.
   - **The digest is the one the manifest already held.** `:master` still points at the build the manifest pins, so there is no new image to package: leave the manifest alone. Leave the version string alone as well, unless the version check reported a version `current.ts` does not declare — a version string that disagrees with the pinned image is wrong whether or not the digest moved. In that case set `version` to `<registry version>:0` — or to `<registry version>:<n+1>` if the tag list already shows a `v<registry version>_<n>`, taking the highest `n` it shows — and write the release notes from the commit the provenance step above already named. If `current.ts` declares a version upstream has not tagged, read its release notes against the CHANGELOG even so: that section stays open, so it can have gained entries since those notes were written.
   - **A new digest, reporting a version `current.ts` does not declare.** Set `version` to `<registry version>:0` — or to `<registry version>:<n+1>` if the tag list already shows a `v<registry version>_<n>`, taking the highest `n` it shows. That happens when this repo's work branch was cut before that version shipped. Run the provenance step above once the manifest holds the new digest: it names the commit the pin was built from. Write release notes for what that commit carries, reading `projects/start-registry/CHANGELOG.md` against it rather than copying the section. The section can run ahead of the pin, where entries landed after it, and behind the pin, where the pin sits on a commit later than the tag. Without a `start-registry/v<registry version>` tag the pin is a pre-release build and that section is still open.
