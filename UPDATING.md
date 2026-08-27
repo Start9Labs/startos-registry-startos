@@ -29,7 +29,7 @@ DIGEST=$(docker buildx imagetools inspect ghcr.io/start9labs/startos-registry:ma
   --format '{{.Manifest.Digest}}')
 ```
 
-`podman` has no `imagetools` subcommand, and `buildx` is a plugin `docker` can be installed without. Use the form below with `podman`, with a `docker` that answers `'buildx' is not a docker command`, or with no container runtime at all:
+`podman` has no `imagetools` subcommand. Use the form below with `podman`, or with no container runtime at all:
 
 ```
 TOKEN=$(curl -sS --fail 'https://ghcr.io/token?scope=repository:start9labs/startos-registry:pull&service=ghcr.io' | jq -e -r .token)
@@ -64,11 +64,11 @@ or, with a `$TOKEN` minted by the `TOKEN=` block above — run that block on its
 ```
 curl -sS --fail -o /dev/null -w '%{content_type}\n' \
   -H "Authorization: Bearer $TOKEN" \
-  -H 'Accept: application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.oci.image.manifest.v1+json' \
+  -H 'Accept: application/vnd.oci.image.index.v1+json, application/vnd.oci.image.manifest.v1+json' \
   "https://ghcr.io/v2/start9labs/startos-registry/manifests/$DIGEST"
 ```
 
-An index prints `application/vnd.oci.image.index.v1+json`. Everything an index lists prints `application/vnd.oci.image.manifest.v1+json` — the per-architecture children, and the attestation manifests that sit beside them. Anything else means the request failed rather than answered, and the `curl: (22)` line above it carries the status. GHCR answers `404` for a `$DIGEST` that is empty or that it does not hold, and any other status points at the token. Run the check even when you expect the build to catch the mistake — `docker buildx imagetools inspect` without `--format` lists all of them next to the index, so the wrong line is an easy copy.
+An index prints `application/vnd.oci.image.index.v1+json`, or `application/vnd.docker.distribution.manifest.list.v2+json` for a Docker-format one. Everything an index lists prints `application/vnd.oci.image.manifest.v1+json` — the per-architecture children, and the attestation manifests that sit beside them. Anything else means the request failed rather than answered, and the `curl: (22)` line above it carries the status. GHCR answers `404` for a `$DIGEST` that is empty or that it does not hold, and any other status points at the token. Run the check even when you expect the build to catch the mistake — `docker buildx imagetools inspect` without `--format` lists all of them next to the index, so the wrong line is an easy copy.
 
 An index still has to carry a child for every architecture `make` builds, and a partial one passes the check above because it is an index. Confirm all three are there:
 
@@ -83,7 +83,7 @@ or, with a `$TOKEN` minted by the `TOKEN=` block above — run that block on its
 
 ```
 curl -sS --fail -H "Authorization: Bearer $TOKEN" \
-  -H 'Accept: application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.oci.image.manifest.v1+json' \
+  -H 'Accept: application/vnd.oci.image.index.v1+json, application/vnd.oci.image.manifest.v1+json' \
   "https://ghcr.io/v2/start9labs/startos-registry/manifests/$DIGEST" |
   jq -e -r '[(.manifests // [])[].platform | select(.architecture != "unknown") | "\(.os)/\(.architecture)"] | sort as $have
             | if (["linux/amd64", "linux/arm64", "linux/riscv64"] - $have) == [] then "all three architectures present"
@@ -126,7 +126,7 @@ or, with a `$TOKEN` minted by the `TOKEN=` block above — run that block on its
 ```
 REPO=https://ghcr.io/v2/start9labs/startos-registry
 ATTESTATION=$(curl -sS --fail -H "Authorization: Bearer $TOKEN" \
-  -H 'Accept: application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.oci.image.manifest.v1+json' \
+  -H 'Accept: application/vnd.oci.image.index.v1+json, application/vnd.oci.image.manifest.v1+json' \
   "$REPO/manifests/$PINNED" |
   jq -e -r '(.manifests // []) as $m
          | ($m | map(select(.platform.architecture == "amd64")) | .[0].digest) as $child
@@ -149,11 +149,11 @@ On an index carrying amd64 provenance both print one line: the monorepo, then th
 
 - Compare the resolved digest against the one the manifest holds — `sed -n 's|.*startos-registry@\(sha256:[0-9a-f]\{64\}\).*|\1|p' startos/manifest/index.ts` prints the current pin. If they differ, set `images['startos-registry'].source.dockerTag` in `startos/manifest/index.ts` to `ghcr.io/start9labs/startos-registry@` followed by the resolved digest.
 - Then set `version` in `startos/versions/current.ts`. Three questions decide it: is the resolved digest the one the manifest already held, what version does the new digest report, and what has this repo already released? The comparison above answers the first, the version check answers the second, and `git ls-remote --tags https://github.com/Start9Labs/startos-registry-startos.git 'refs/tags/v*' | sort -V -k2` answers the third — every released revision is there as `v<version>_<n>`.
-  - **The digest is the one the manifest already held.** `:master` still points at the build the manifest pins, so there is no new image to package: leave the manifest alone. Leave the version string alone as well, unless the version check reported something `current.ts` does not declare — a version string that disagrees with the pinned image is wrong whether or not the digest moved, and the next case gives the value to set. If `current.ts` declares a version upstream has not tagged, read its release notes against the CHANGELOG even so: that section stays open, so it can have gained entries since those notes were written.
+  - **The digest is the one the manifest already held.** `:master` still points at the build the manifest pins, so there is no new image to package: leave the manifest alone. Leave the version string alone as well, unless the version check reported a version `current.ts` does not declare — a version string that disagrees with the pinned image is wrong whether or not the digest moved. Set `version` to `<registry version>:0`, or to `<registry version>:<n+1>` taking the highest `n` the tag list shows for that version, and write the release notes from the commit the provenance step above already named. If `current.ts` declares a version upstream has not tagged, read its release notes against the CHANGELOG even so: that section stays open, so it can have gained entries since those notes were written.
   - **A new digest, reporting a version `current.ts` does not declare.** Set `version` to `<registry version>:0` — or to `<registry version>:<n+1>` if the tag list already shows a `v<registry version>_<n>`, taking the highest `n` it shows. That happens when this repo's work branch was cut before that version shipped. Run the provenance step above once the manifest holds the new digest: it names the commit the pin was built from. Write release notes for what that commit carries, reading `projects/start-registry/CHANGELOG.md` against it rather than copying the section. The section can run ahead of the pin, where entries landed after it, and behind the pin, where the pin sits on a commit later than the tag. Without a `start-registry/v<registry version>` tag the pin is a pre-release build and that section is still open.
   - **A new digest, the same version, and this repo has not released the revision `current.ts` declares.** Leave the version string alone. Read the release notes against the CHANGELOG even so: the new digest is a different build of that version, so the notes can describe a commit the pin no longer sits on.
   - **A new digest, the same version, and this repo has released that revision.** Set `version` to `<registry version>:<n+1>`, where `n` is the highest revision the tag list shows for that version, because the new digest is a different build of the same version. Write release notes for what the new image changed.
-- Write the release notes in every locale `current.ts` carries. The field takes any subset, and `npm run check` passes on a translation left describing the previous version, so read each one before committing.
+- Write the release notes in every locale `current.ts` carries, and check the keys against `startos/i18n/dictionaries/translations.ts`. The field takes any subset and its type constrains no key, so `npm run check` passes both on a translation left describing the previous version and on a mistyped locale key, which drops that language with nothing to show for it.
 - Build all three architectures:
   ```
   make
