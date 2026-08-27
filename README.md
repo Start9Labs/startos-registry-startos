@@ -35,13 +35,13 @@
 
 ## Image and Container Runtime
 
-One image, published by Start9 from the monorepo's `master` branch rather than from a tagged release. The manifest pins it by digest, so every build of a given commit of this repo packs the same registry daemon.
+One image, published by Start9 from the monorepo's `master` branch rather than from a tagged release. The manifest pins it by digest, so every build of a given commit of this repo packs the same registry daemon, and the package version tracks the version that daemon reports.
 
-| Property      | Value                                                                             |
-| ------------- | --------------------------------------------------------------------------------- |
-| Image         | `ghcr.io/start9labs/startos-registry`, pinned by digest                           |
-| Architectures | `aarch64`, `x86_64`, `riscv64` — the SDK's default, which the pinned image covers |
-| Command       | `start-registryd`                                                                 |
+| Property      | Value                                                   |
+| ------------- | ------------------------------------------------------- |
+| Image         | `ghcr.io/start9labs/startos-registry`, pinned by digest |
+| Architectures | `aarch64`, `x86_64`, `riscv64` — one s9pk each          |
+| Command       | `start-registryd`                                       |
 
 | Subcontainer                                                      | Purpose                                                          |
 | ----------------------------------------------------------------- | ---------------------------------------------------------------- |
@@ -100,7 +100,7 @@ The port is bound on the `api-multi` MultiHost and is not masked.
 
 ## Installation and First-Run Flow
 
-Install starts the daemon and raises two tasks. Nothing is generated and no credential is shown — this service has no accounts.
+Install raises two tasks and leaves the registry stopped. Nothing is generated and no credential is shown — this service has no accounts.
 
 1. **Configure Registry** — a name, and optionally an icon. This is what StartOS servers display when they add your registry.
 2. **Add Administrator** — a label, a contact, and a **PEM-encoded public key**. That key is the whole of the authorization model: administration is proving possession of the matching private key, not logging in.
@@ -173,10 +173,9 @@ Both volumes are copied wholesale — `sdk.Backups.ofVolumes('config', 'main')`.
 1. **Administration is by public key only.** No accounts, no passwords, no web login — the private key is yours to keep.
 2. **Removing the last administrator locks you out** of everything the actions do; nothing warns you first.
 3. **Every action needs the service running**, because they reach the daemon over a shared socket rather than a network port.
-4. **The image is a build of the monorepo's `master` branch** rather than of a tagged release, pinned to one digest of it.
-5. **Architecture support is the SDK's default set** — `aarch64`, `x86_64` and `riscv64`, because the image declares no `arch` of its own — so the pinned image has to cover all three.
-6. **Categories are not configurable here yet** — the Configure Registry action sets name and icon only.
-7. **Tor is not a dependency**, and a `tor-proxy` value is written whether or not Tor is installed.
+4. **The image is a build of the monorepo's `master` branch** rather than of a tagged release. The manifest pins one such build by digest.
+5. **Categories are not configurable here yet** — the Configure Registry action sets name and icon only.
+6. **Tor is not a dependency**, and a `tor-proxy` value is written whether or not Tor is installed.
 
 ---
 
@@ -185,7 +184,7 @@ Both volumes are copied wholesale — `sdk.Backups.ofVolumes('config', 'main')`.
 ```yaml
 package_id: startos-registry
 image: ghcr.io/start9labs/startos-registry # pinned by digest; a build of the monorepo's master branch
-architectures: [aarch64, x86_64, riscv64] # the SDK default; the pinned image covers all three
+architectures: [aarch64, x86_64, riscv64] # one s9pk each; a packed manifest declares only its own
 subcontainers:
   - startos-registry-sub # the running daemon
   - get-info # temporary; one per action, all sharedRun: true
