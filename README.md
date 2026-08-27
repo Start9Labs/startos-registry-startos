@@ -37,11 +37,11 @@
 
 One image, published by Start9 from the monorepo's `master` branch rather than from a tagged release. The manifest pins it by digest, so every build of a given package version packs the same registry daemon.
 
-| Property      | Value                                                               |
-| ------------- | ------------------------------------------------------------------- |
-| Image         | `ghcr.io/start9labs/startos-registry`, pinned by digest             |
-| Architectures | Whatever the pinned image covers — the manifest declares none       |
-| Command       | `start-registryd`                                                   |
+| Property      | Value                                                         |
+| ------------- | ------------------------------------------------------------- |
+| Image         | `ghcr.io/start9labs/startos-registry`, pinned by digest       |
+| Architectures | Whatever the pinned image covers — the manifest declares none |
+| Command       | `start-registryd`                                             |
 
 | Subcontainer                                                      | Purpose                                                          |
 | ----------------------------------------------------------------- | ---------------------------------------------------------------- |
