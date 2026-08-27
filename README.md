@@ -102,8 +102,9 @@ The port is bound on the `api-multi` MultiHost and is not masked.
 
 Install raises two tasks and leaves the registry stopped. Nothing is generated and no credential is shown — this service has no accounts.
 
-1. **Configure Registry** — a name, and optionally an icon. This is what StartOS servers display when they add your registry.
-2. **Add Administrator** — a label, a contact, and a **PEM-encoded public key**. That key is the whole of the authorization model: administration is proving possession of the matching private key, not logging in.
+1. **Start the registry** — its hostnames appear on the **Web API** interface.
+2. **Configure Registry** — a name, and optionally an icon. This is what StartOS servers display when they add your registry.
+3. **Add Administrator** — a label, a contact, and a **PEM-encoded public key**. That key is the whole of the authorization model: administration is proving possession of the matching private key, not logging in.
 
 Both tasks require the service to be running, since both go through the CLI to the live daemon. Both are `important`: the registry serves an empty index perfectly well without them, it just has no identity and nobody who can administer it.
 
@@ -174,7 +175,7 @@ Both volumes are copied wholesale — `sdk.Backups.ofVolumes('config', 'main')`.
 2. **Removing the last administrator locks you out** of everything the actions do; nothing warns you first.
 3. **Every action needs the service running**, because they reach the daemon over a shared socket rather than a network port.
 4. **The image is a build of the monorepo's `master` branch** rather than of a tagged release. The manifest pins one such build by digest.
-5. **Categories are not configurable here yet** — the Configure Registry action sets name and icon only.
+5. **Categories are set from the CLI, not from an action** — `start-cli registry package category` adds and removes them and assigns packages to them. The Configure Registry action sets name and icon.
 6. **Tor is not a dependency**, and a `tor-proxy` value is written whether or not Tor is installed.
 
 ---
@@ -183,8 +184,8 @@ Both volumes are copied wholesale — `sdk.Backups.ofVolumes('config', 'main')`.
 
 ```yaml
 package_id: startos-registry
-image: ghcr.io/start9labs/startos-registry # pinned by digest; a build of the monorepo's master branch
-architectures: [aarch64, x86_64, riscv64] # one s9pk each; a packed manifest declares only its own
+image: ghcr.io/start9labs/startos-registry # pinned by digest
+architectures: [aarch64, x86_64, riscv64] # one s9pk per architecture
 subcontainers:
   - startos-registry-sub # the running daemon
   - get-info # temporary; one per action, all sharedRun: true

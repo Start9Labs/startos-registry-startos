@@ -12,7 +12,7 @@
 
 ## Getting set up
 
-After install the registry is stopped and two tasks are waiting. It runs and serves without them, but until both are done it has no name and nobody who can publish to it. Both tasks talk to the running daemon, so start the registry first.
+After install the registry is stopped and two tasks are waiting. The two tasks give the registry its name and its first administrator. Both talk to the running daemon, so start the registry first.
 
 1. Start the registry. Its hostnames will appear on the **Web API** interface.
 2. Run the **Configure Registry** task and set a registry name (and optionally an icon).
