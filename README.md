@@ -48,7 +48,7 @@ One image, published by Start9 from the monorepo's `master` branch rather than f
 | `startos-registry-sub`                                            | The `primary` daemon — the one to `attach` to                                          |
 | `get-info`, `set-info`, `add-admin`, `remove-admin`, `delete-key` | Temporary; one per action, plus one per action that reads the daemon to build its form |
 
-**Every subcontainer here is declared `sharedRun: true`, and that is the whole mechanism behind the actions.** `start-registryd` writes an auth cookie to `/run/startos/registry.authcookie`, and sharing `/run` is what puts that cookie in front of the `start-registry` CLI in a temporary container. The CLI then calls the daemon on `127.0.0.1:5959`, the same port the health check probes. It is also why every action requires the service to be running: a stopped daemon has written no cookie and is listening on nothing.
+**Every subcontainer here is declared `sharedRun: true`, and that is the whole mechanism behind the actions.** `start-registryd` writes an auth cookie to `/run/startos/registry.authcookie`, and sharing `/run` is what puts that cookie in front of the `start-registry` CLI in a temporary container. The CLI then calls the daemon on `127.0.0.1:5959`, the same port the health check probes. It is also why every action requires the service to be running: a stopped daemon is listening on nothing.
 
 ## Volume and Data Layout
 
@@ -127,7 +127,7 @@ Registers a signer and grants it admin rights.
 
 - **What it changes:** the daemon's store — it adds a signer record with the label, contact, and public key, then grants that signer id admin.
 - **Cost:** seconds. No restart.
-- **Repeat safety:** it adds rather than edits, so every new key becomes another administrator. The daemon refuses a key it already holds and names the signer that has it, so a repeat run with the same key changes nothing.
+- **Repeat safety:** the action adds rather than edits, so every new key becomes another administrator. Re-running it with a key the daemon already holds fails, names the signer that has it, and changes nothing — it always creates the signer first, so granting admin to a signer that already exists has to go through `start-cli registry admin add <id>`.
 - **The contact is stored as a URL** — an email becomes `mailto:`, a Matrix username becomes a `matrix.to` link.
 - **The key must be an ed25519 public key in SPKI PEM form** — the `-----BEGIN PUBLIC KEY-----` block. OpenSSH's `ssh-ed25519 …` and PKCS#1's `-----BEGIN RSA PUBLIC KEY-----` are both rejected by the form itself. The pattern does not check the key type, so an RSA key in SPKI form passes the form and is then refused by the `start-registry` CLI when the action runs. There is no key generation in this package: the private half is yours and never touches this server — `start-cli init-key` creates one on the administrator's own machine and `start-cli pubkey` prints the public half in the form the pattern accepts.
 
@@ -159,7 +159,7 @@ One check, on the only daemon.
 | --------- | --------- | ---------------------- |
 | `primary` | "Web API" | Port 5959 is listening |
 
-The daemon binds quickly, so a failure means it did not start — most often a `config.yaml` value it rejects, which it names in the service logs. An action failing while this check is green points at the daemon's store or at the argument it was given: the actions call the same port this check probes, so a green check has already proven the daemon is up and reachable.
+The daemon binds quickly, so a failure means it did not start — most often a `config.yaml` value it rejects, which it names in the service logs. An action failing while this check is green usually points at the daemon's store or at the argument it was given, since the actions call the same port this check probes. The check reads `/proc/net/tcp` for a socket on that port rather than connecting, so an action reporting a refused connection outranks it: sockets left behind by a dead daemon hold the port for about a minute.
 
 ## Backups and Restore
 
@@ -186,9 +186,9 @@ Both volumes are copied wholesale — `sdk.Backups.ofVolumes('config', 'main')`.
 package_id: startos-registry
 image: ghcr.io/start9labs/startos-registry # pinned by digest
 architectures: [aarch64, x86_64, riscv64] # one s9pk per architecture
-subcontainers:
+subcontainers: # all sharedRun: true
   - startos-registry-sub # the running daemon
-  - get-info # temporary; one per action plus one per form-building read, all sharedRun: true
+  - get-info # temporary; one per action plus one per form-building read
   - set-info
   - add-admin
   - remove-admin
