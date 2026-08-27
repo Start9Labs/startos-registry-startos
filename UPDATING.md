@@ -92,7 +92,7 @@ curl -sS --fail -H "Authorization: Bearer $TOKEN" \
 
 Both print `all three architectures present`, or name what the digest does carry and exit non-zero. A pull-request build can be single-architecture, so a digest that is genuinely an index still needs this check.
 
-Then confirm the digest carries the version you are about to declare. This step runs the image, because it carries no label or annotation naming its version. `podman run` works the same way. With no container runtime, run the provenance step below against `$DIGEST` rather than `$PINNED` and read `Cargo.toml` at the commit it names, with the `gh api` form in "Determining the upstream version" above; the image reports the version that commit declared.
+Then confirm the digest carries the version you are about to declare. This step runs the image, because it carries no label or annotation naming its version. `podman run` works the same way. With no container runtime, run the provenance step below against `$DIGEST` rather than `$PINNED` and read `Cargo.toml` at the commit it names — the `gh api` form in "Determining the upstream version" above, with `master` in its URL replaced by that commit. The image reports the version that commit declared.
 
 ```
 docker run --rm --entrypoint start-registry \
@@ -110,7 +110,9 @@ docker buildx imagetools inspect "ghcr.io/start9labs/startos-registry@$PINNED" \
   --format '{{json .Provenance}}' |
   jq -r '.["linux/amd64"].SLSA.buildDefinition.internalParameters.github_event_payload
          // error("no linux/amd64 provenance at this digest — it is a per-architecture child, a single-platform index, or a build that published no attestation")
-         | "\(.repository.full_name) \(.ref) \(.after)"'
+         | (.after // .pull_request.head.sha) as $sha
+         | if $sha == null then error("this provenance names no commit") else
+             "\(.repository.full_name) \(.ref // .pull_request.head.ref) \($sha)" end'
 ```
 
 or, with a `$TOKEN` minted by the `TOKEN=` block above. Re-run that block on its own in a shell that has none:
@@ -129,10 +131,12 @@ BLOB=$(curl -sS --fail -H "Authorization: Bearer $TOKEN" \
   jq -e -r '.layers | map(select(.annotations["in-toto.io/predicate-type"] | test("slsa.dev/provenance"))) | .[0].digest') &&
 curl -sSL --fail -H "Authorization: Bearer $TOKEN" "$REPO/blobs/$BLOB" |
   jq -e -r '.predicate.buildDefinition.internalParameters.github_event_payload
-         | "\(.repository.full_name) \(.ref) \(.after)"'
+         | (.after // .pull_request.head.sha) as $sha
+         | if $sha == null then error("this provenance names no commit") else
+             "\(.repository.full_name) \(.ref // .pull_request.head.ref) \($sha)" end'
 ```
 
-On an index carrying amd64 provenance both print one line: the monorepo, the ref, and the commit the pin was built from. On anything else both raise the message above and exit non-zero. A `curl: (22)` line means a request failed rather than a digest was rejected, so mint the token again and re-run the block.
+On an index carrying amd64 provenance both print one line: the monorepo, the ref, and the commit the pin was built from. A pull-request build names its own branch and head commit. On anything else both raise and exit non-zero. A `curl: (22)` line means a request failed rather than a digest was rejected, so mint the token again and re-run the block.
 
 ## Applying the bump
 
