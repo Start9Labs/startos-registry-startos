@@ -43,10 +43,10 @@ One image, published by Start9 from the monorepo's `master` branch rather than f
 | Architectures | `aarch64`, `x86_64`, `riscv64` — one s9pk each          |
 | Command       | `start-registryd`                                       |
 
-| Subcontainer                                                      | Purpose                                                                                                 |
-| ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `startos-registry-sub`                                            | The `primary` daemon — the one to `attach` to                                                           |
-| `get-info`, `set-info`, `add-admin`, `remove-admin`, `delete-key` | Temporary; one per `start-registry` call, so an action that reads the daemon to build its form uses two |
+| Subcontainer                                                      | Purpose                                                                                      |
+| ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `startos-registry-sub`                                            | The `primary` daemon — the one to `attach` to                                                |
+| `get-info`, `set-info`, `add-admin`, `remove-admin`, `delete-key` | Temporary; one per action, plus one more where the action reads the daemon to build its form |
 
 **Every subcontainer here is declared `sharedRun: true`, and that is the whole mechanism behind the actions.** They share the daemon's `/run`, so the `start-registry` CLI in a temporary container reaches the running `start-registryd` over its socket rather than over the network. It is also why every action requires the service to be running: with no daemon there is no socket to talk to.
 
@@ -104,7 +104,7 @@ Install raises two tasks and leaves the registry stopped. Nothing is generated a
 
 1. **Start the registry** — its hostnames appear on the **Web API** interface.
 2. **Configure Registry** — a name, and optionally an icon. This is what StartOS servers display when they add your registry.
-3. **Add Administrator** — a label, a contact, and a **PEM-encoded public key**. That key is the whole of the authorization model: administration is proving possession of the matching private key, not logging in.
+3. **Add Administrator** — a label, a contact, and a **PEM-encoded ed25519 public key**. That key is the whole of the authorization model: administration is proving possession of the matching private key, not logging in.
 
 Both tasks require the service to be running, since both go through the CLI to the live daemon. Both are `important`: the registry serves an empty index perfectly well without them, it just has no identity and nobody who can administer it.
 
@@ -129,7 +129,7 @@ Registers a signer and grants it admin rights.
 - **Cost:** seconds. No restart.
 - **Repeat safety:** each run adds a new administrator; it is not an edit. Running it twice with the same key yields two records.
 - **The contact is stored as a URL** — an email becomes `mailto:`, a Matrix username becomes a `matrix.to` link.
-- **The key must be a PEM public key**, checked by pattern. There is no key generation here: the private half is yours and never touches this server.
+- **The key must be a PEM-encoded ed25519 public key.** The form's pattern accepts any PEM public key, so another kind is refused by the daemon rather than by the form. There is no key generation here: the private half is yours and never touches this server.
 
 ### Remove Administrator
 
@@ -188,7 +188,7 @@ image: ghcr.io/start9labs/startos-registry # pinned by digest
 architectures: [aarch64, x86_64, riscv64] # one s9pk per architecture
 subcontainers:
   - startos-registry-sub # the running daemon
-  - get-info # temporary; one per start-registry call, all sharedRun: true
+  - get-info # temporary; one per action plus one per form-building read, all sharedRun: true
   - set-info
   - add-admin
   - remove-admin
