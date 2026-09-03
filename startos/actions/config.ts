@@ -24,6 +24,14 @@ export const inputSpec = InputSpec.of({
       },
     ],
   }),
+  description: Value.textarea({
+    name: i18n('Registry Description'),
+    description: i18n(
+      'Shown above your services in the marketplace. Markdown is supported.',
+    ),
+    default: null,
+    required: false,
+  }),
   // @TODO
   // categories: Value.list(List.text({ name: 'Categories' }, { maxLength: 32 })),
 })
@@ -35,7 +43,7 @@ export const config = sdk.Action.withInput(
   // metadata
   async ({ effects }) => ({
     name: i18n('Configure Registry'),
-    description: i18n('Set the name, icon, and categories of your registry'),
+    description: i18n('Set the name, icon, and description of your registry'),
     warning: null,
     allowedStatuses: 'only-running',
     group: null,
@@ -46,10 +54,11 @@ export const config = sdk.Action.withInput(
   inputSpec,
 
   // optionally pre-fill the input form
-  async ({ effects }) =>
-    sdk.SubContainer.withTemp<{
+  async ({ effects }) => {
+    const { name, icon, description } = await sdk.SubContainer.withTemp<{
       name: string
       icon: string | null
+      description?: string | Record<string, string> | null
       // @TODO
       // categories: Record<string, { name: string }>
     }>(
@@ -62,10 +71,20 @@ export const config = sdk.Action.withInput(
           (await sub.execFail(['start-registry', 'info', '--format=json']))
             .stdout as string,
         ),
-    ),
+    )
+
+    return {
+      name,
+      icon,
+      description:
+        typeof description === 'string'
+          ? description
+          : (description?.en_US ?? Object.values(description ?? {})[0] ?? null),
+    }
+  },
 
   // the execution function
-  async ({ effects, input: { name, icon } }) =>
+  async ({ effects, input: { name, icon, description } }) =>
     sdk.SubContainer.withTemp(
       effects,
       { imageId: 'startos-registry', sharedRun: true },
@@ -75,6 +94,14 @@ export const config = sdk.Action.withInput(
         await sub.execFail(['start-registry', 'info', 'set-name', name])
         if (icon) {
           await sub.execFail(['start-registry', 'info', 'set-icon', icon])
+        }
+        if (description) {
+          await sub.execFail([
+            'start-registry',
+            'info',
+            'set-description',
+            description,
+          ])
         }
       },
     ),
