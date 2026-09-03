@@ -12,10 +12,12 @@ const dict = {
 
   // actions/config.ts
   'Configure Registry': 5,
-  'Set the name, icon, and categories of your registry': 6,
+  'Set the name, icon, and description of your registry': 6,
   'Registry Name': 7,
   'Registry Icon': 8,
   'Must be a valid data URL or http(s) URL (e.g. data:image/png;base64,abc123... or https://example.com/icon.png)': 9,
+  'Registry Description': 24,
+  'Shown above your services in the marketplace. Markdown is supported.': 25,
 
   // actions/addAdmin.ts
   'Add Administrator': 10,
