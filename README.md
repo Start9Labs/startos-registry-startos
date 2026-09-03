@@ -80,7 +80,7 @@ One model, holding the daemon's whole configuration. Everything else the registr
 
 **`tor-proxy` is always written, even with Tor absent.** The bridge lookup carries a fallback port, so the address stays constant whether or not Tor is installed — which keeps a Tor install or uninstall from restarting the registry. With no Tor running, outbound requests through it simply get connection-refused, which the daemon tolerates.
 
-The registry's name, icon, and administrators are **not** in this file. They live in the daemon's own store and are set through the actions.
+The registry's name, icon, description, and administrators are **not** in this file. They live in the daemon's own store and are set through the actions.
 
 ## Dependencies
 
@@ -102,7 +102,7 @@ The port is bound on the `api-multi` MultiHost and is not masked.
 
 Install starts the daemon and raises two tasks. Nothing is generated and no credential is shown — this service has no accounts.
 
-1. **Configure Registry** — a name, and optionally an icon. This is what StartOS servers display when they add your registry.
+1. **Configure Registry** — a name, and optionally an icon and a description. This is what StartOS servers display when they add your registry.
 2. **Add Administrator** — a label, a contact, and a **PEM-encoded public key**. That key is the whole of the authorization model: administration is proving possession of the matching private key, not logging in.
 
 Both tasks require the service to be running, since both go through the CLI to the live daemon. Both are `important`: the registry serves an empty index perfectly well without them, it just has no identity and nobody who can administer it.
@@ -113,12 +113,13 @@ Three actions, and **all three are only available while the service is running.*
 
 ### Configure Registry
 
-Sets the registry's display name and icon.
+Sets the registry's display name, icon, and description.
 
-- **What it changes:** the daemon's own store, via `start-registry info set-name` / `set-icon`.
+- **What it changes:** the daemon's own store, via `start-registry info set-name` / `set-icon` / `set-description`.
 - **Cost:** seconds. No restart.
 - **Repeat safety:** idempotent, and the form is pre-filled from the live daemon rather than from a file.
 - **The icon is a data URL or an http(s) URL**, validated by pattern before it is accepted. Leaving it blank leaves the existing icon in place rather than clearing it.
+- **The description is markdown**, shown above the registry's services in the marketplace. Blank leaves the existing one in place.
 
 ### Add Administrator
 
