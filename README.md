@@ -9,9 +9,9 @@
 > the upstream documentation is accurate and fully applicable — see the
 > Documentation section of `instructions.md` for links.
 
-[StartOS Registry](https://github.com/Start9Labs/start-os/tree/master/projects/start-registry/) is the server behind a StartOS marketplace: it indexes signed `.s9pk` packages and serves them to StartOS servers that add it. This package runs your own, administered entirely by public key — there is no account, no password, and no login anywhere in it.
+[StartOS Registry](https://github.com/Start9Labs/start-technologies/tree/master/projects/start-registry/) is the server behind a StartOS marketplace: it indexes signed `.s9pk` packages and serves them to StartOS servers that add it. This package runs your own, administered entirely by public key — there is no account, no password, and no login anywhere in it.
 
-- **Upstream repo:** <https://github.com/Start9Labs/start-os/tree/master/projects/start-registry/>
+- **Upstream repo:** <https://github.com/Start9Labs/start-technologies/tree/master/projects/start-registry/>
 - **Wrapper repo:** <https://github.com/Start9Labs/startos-registry-startos/>
 
 ---
