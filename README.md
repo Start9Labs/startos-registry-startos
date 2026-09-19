@@ -43,10 +43,10 @@ One image, published by Start9 from the monorepo's `master` branch rather than f
 | Architectures | Whatever the image publishes — the manifest declares no restriction |
 | Command       | `start-registryd`                                                   |
 
-| Subcontainer                                                      | Purpose                                                          |
-| ----------------------------------------------------------------- | ---------------------------------------------------------------- |
-| `startos-registry-sub`                                            | The `primary` daemon — the one to `attach` to                    |
-| `get-info`, `set-info`, `add-admin`, `remove-admin`, `delete-key` | Temporary; one per action, each running the `start-registry` CLI |
+| Subcontainer                                                                       | Purpose                                                          |
+| ---------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| `startos-registry-sub`                                                             | The `primary` daemon — the one to `attach` to                    |
+| `get-info`, `set-info`, `add-admin`, `remove-admin`, `delete-key`, `list-packages` | Temporary; one per action, each running the `start-registry` CLI |
 
 **Every subcontainer here is declared `sharedRun: true`, and that is the whole mechanism behind the actions.** They share the daemon's `/run`, so the `start-registry` CLI in a temporary container reaches the running `start-registryd` over its socket rather than over the network. It is also why every action requires the service to be running: with no daemon there is no socket to talk to.
 
@@ -109,7 +109,7 @@ Both tasks require the service to be running, since both go through the CLI to t
 
 ## Actions
 
-Three actions, and **all three are only available while the service is running.**
+Four actions, and **all four are only available while the service is running.**
 
 ### Configure Registry
 
@@ -139,6 +139,16 @@ Revokes an administrator by removing their signer record.
 - **Cost:** seconds. No restart.
 - **Repeat safety:** idempotent per administrator; the dropdown is built from the live list.
 - **Nothing stops you removing the last one.** Do that and no key can administer the registry any more — recovery means the CLI inside the container.
+
+### List Packages
+
+Shows how many packages the registry hosts and their names, alphabetically, as one comma-separated list.
+
+- **What it changes:** nothing. It reads `start-registry package index` from the live daemon and formats it.
+- **Cost:** seconds. No restart. The index carries every package's icon and descriptions, so the read grows with the registry.
+- **Repeat safety:** read-only.
+- **Each name is the title of the package's newest version.** A package whose versions have all been removed is left out.
+- **It is an overview, not the index.** Versions, architectures, package ids, download URLs, signers, and categories are not shown. `start-cli registry package index` from an administrator's workstation has all of those, and the marketplace lists a registry's packages with search and categories.
 
 ## Tasks
 
@@ -194,6 +204,7 @@ subcontainers:
   - add-admin
   - remove-admin
   - delete-key
+  - list-packages
 volumes:
   main: /var/lib/startos
   config: its config.yaml at /etc/startos/config.yaml (file mount)
@@ -207,6 +218,7 @@ actions:
   - config # only-running
   - add-admin # only-running
   - remove-admin # only-running
+  - list-packages # only-running, read-only
 tasks:
   - { action: config, severity: important }
   - { action: add-admin, severity: important }
