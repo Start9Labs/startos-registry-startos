@@ -17,7 +17,8 @@ export const inputSpec = InputSpec.of({
     placeholder: 'data:image/png;base64,abc123',
     patterns: [
       {
-        regex: '^(data:image/[a-z-]+;base64,[a-zA-Z0-9+/]*={0,2}|https?://.+)$',
+        regex:
+          '^(data:image/[a-z0-9][a-z0-9.+-]*;base64,[a-zA-Z0-9+/]*={0,2}|https?://.+)$',
         description: i18n(
           'Must be a valid data URL or http(s) URL (e.g. data:image/png;base64,abc123... or https://example.com/icon.png)',
         ),
