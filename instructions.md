@@ -33,3 +33,4 @@ On a StartOS server that should install from your registry, add the registry's W
 - **Configure Registry** — change the registry's display name, icon, and description. The description appears above your services in the marketplace and may use markdown.
 - **Add Administrator** — register an additional admin signer. Each admin's public key, label, and contact are stored on the registry; the matching private key stays with the admin.
 - **Remove Administrator** — remove an admin signer from the registry. Pick the admin to remove from the list of currently registered signers.
+- **List Packages** — see how many packages your registry hosts and their names.
