@@ -35,6 +35,13 @@ const dict = {
   'Remove an administrator from this registry': 20,
   Users: 21,
 
+  // actions/listPackages.ts
+  'List Packages': 26,
+  'Show the names of the packages hosted on this registry': 27,
+  'Hosted Packages': 28,
+  'Packages hosted: ${count}': 29,
+  'No packages are hosted on this registry yet.': 30,
+
   // init/adminTasks.ts
   'Set basic information about your registry': 22,
   'Add an administrator to your registry': 23,
