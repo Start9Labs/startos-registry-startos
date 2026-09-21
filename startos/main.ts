@@ -23,11 +23,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
   // start-registryd parses tor-proxy as a URL; the bridge address is bare host:port.
   await configYaml.merge(effects, { 'tor-proxy': `socks5h://${torProxy}` })
 
-  // start-registryd loads registry-hostname once, at startup, and verifies
-  // every signed request against it. setHostnames rewrites the list from init,
-  // which restarts nothing, so this read is what restarts the daemon onto a new
-  // list; its value is unused. Mapped to the one key, so no other change to the
-  // file restarts it; below the merge, so main's own write precedes the watch.
+  // start-registryd reads registry-hostname once at startup, so a change has to restart it.
   await configYaml.read((c) => c['registry-hostname']).const(effects)
 
   return sdk.Daemons.of(effects).addDaemon('primary', {

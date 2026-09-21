@@ -78,7 +78,7 @@ One model, holding the daemon's whole configuration. Everything else the registr
 
 **`registry-hostname` is the one that matters operationally.** The daemon reads the list once, at startup, and accepts a signed request — anything an administrator or signer sends — only when it was signed for a hostname on it. Init rebuilds the list from the addresses actually published and rewrites the file whenever the set changes, and `main` watches that one key, so a change restarts the service onto the new list. Add or remove an address and the registry restarts itself once, with nothing to run by hand.
 
-A signed request to a hostname the daemon does not know fails with `invalid request signature: not valid for any identity this server recognizes`, while unsigned reads — `registry info`, the package index — keep working at the same address. With a current `start-cli`, that pairing points at this list: check that the address the client is using is one the Web API interface publishes, and that it appears under `registry-hostname` in `config.yaml`.
+A signed request to an address the interface does not publish fails with `invalid request signature: not valid for any identity this server recognizes`, while unsigned reads — `registry info`, the package index — keep working at the same address.
 
 **`tor-proxy` is always written, even with Tor absent.** The bridge lookup carries a fallback port, so the address stays constant whether or not Tor is installed — which keeps a Tor install or uninstall from restarting the registry. With no Tor running, outbound requests through it simply get connection-refused, which the daemon tolerates.
 
@@ -98,7 +98,7 @@ One interface. It is what a StartOS server adds as a marketplace, and what a pub
 
 The port is bound on the `api-multi` MultiHost and is not masked.
 
-**Publishing an address here is how the registry becomes usable to anyone else**, and it feeds `registry-hostname` directly — which is why adding or removing one while the service is running restarts it. A registry only reachable on `.local` works, but only from the same LAN.
+**Publishing an address here is how the registry becomes usable to anyone else**, and it feeds `registry-hostname` directly. A registry only reachable on `.local` works, but only from the same LAN.
 
 ## Installation and First-Run Flow
 
