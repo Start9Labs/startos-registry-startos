@@ -1,23 +1,18 @@
 import { VersionInfo, IMPOSSIBLE } from '@start9labs/start-sdk'
 
 export const current = VersionInfo.of({
-  version: '1.1.0:2',
+  version: '1.1.0:3',
   releaseNotes: {
-    en_US: `A new List Packages action shows how many packages your registry hosts and lists their names.
-
-Configure Registry accepts SVG icons for the Registry Icon.`,
-    es_ES: `Una nueva acción Listar Paquetes muestra cuántos paquetes aloja tu registro y enumera sus nombres.
-
-Configurar Registro acepta iconos SVG como Icono del Registro.`,
-    de_DE: `Eine neue Aktion „Pakete auflisten“ zeigt, wie viele Pakete deine Registry hostet, und listet ihre Namen auf.
-
-„Registry konfigurieren“ akzeptiert SVG-Symbole als Registry-Symbol.`,
-    pl_PL: `Nowa akcja Lista Pakietów pokazuje, ile pakietów hostuje twój rejestr, i wymienia ich nazwy.
-
-Konfiguruj Rejestr przyjmuje ikony SVG jako Ikonę Rejestru.`,
-    fr_FR: `Une nouvelle action Lister les Paquets indique combien de paquets votre registre héberge et en donne les noms.
-
-Configurer le Registre accepte les icônes SVG comme Icône du Registre.`,
+    en_US:
+      'Adding or removing an address on the Web API interface now restarts the registry, so the change takes effect at once.',
+    es_ES:
+      'Añadir o quitar una dirección en la interfaz API Web ahora reinicia el registro, de modo que el cambio surte efecto de inmediato.',
+    de_DE:
+      'Das Hinzufügen oder Entfernen einer Adresse an der Schnittstelle Web-API startet die Registry jetzt neu, sodass die Änderung sofort wirksam wird.',
+    pl_PL:
+      'Dodanie lub usunięcie adresu w interfejsie API Web powoduje teraz ponowne uruchomienie rejestru, dzięki czemu zmiana działa od razu.',
+    fr_FR:
+      'Ajouter ou retirer une adresse sur l’interface API Web redémarre désormais le registre, afin que le changement prenne effet immédiatement.',
   },
   migrations: {
     up: async ({ effects }) => {},

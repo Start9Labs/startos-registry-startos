@@ -23,6 +23,9 @@ export const main = sdk.setupMain(async ({ effects }) => {
   // start-registryd parses tor-proxy as a URL; the bridge address is bare host:port.
   await configYaml.merge(effects, { 'tor-proxy': `socks5h://${torProxy}` })
 
+  // start-registryd reads registry-hostname once at startup, so a change has to restart it.
+  await configYaml.read((c) => c['registry-hostname']).const(effects)
+
   return sdk.Daemons.of(effects).addDaemon('primary', {
     subcontainer: sdk.SubContainer.of(
       effects,
