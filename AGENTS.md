@@ -30,4 +30,4 @@ verified, tried, and decided belongs in the commit message and the PR body.
 - **Tor is intentionally not a declared dependency**, even though `tor-startos/startos/utils` is imported for its host id and port. Declaring it would turn an optional path into an install requirement.
 - **`registry-hostname` must be rebuilt from the live address set, not appended to.** The daemon serves and signs against the hostnames it knows, so a removed address has to leave the list too — hence the array comparison before writing.
 - **Name, icon, description, and administrators live in the daemon's own store, not `config.yaml`.** Don't add them to the file model; the CLI is the only writer and the actions pre-fill from the live daemon.
-- **The image tracks `master`, with no `arch` declared.** A rebuild picks up whatever the branch holds, and architecture support follows the published image rather than the manifest.
+- **The image is pinned to `v<registry version>`, with no `arch` declared.** Never pin `:master`, which moves with every merge; architecture support follows the published image rather than the manifest.

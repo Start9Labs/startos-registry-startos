@@ -1,18 +1,18 @@
 import { VersionInfo, IMPOSSIBLE } from '@start9labs/start-sdk'
 
 export const current = VersionInfo.of({
-  version: '1.1.0:3',
+  version: '1.1.0:4',
   releaseNotes: {
     en_US:
-      'Adding or removing an address on the Web API interface now restarts the registry, so the change takes effect at once.',
+      'The public key error in Add Administrator is now shown in your language.',
     es_ES:
-      'Añadir o quitar una dirección en la interfaz API Web ahora reinicia el registro, de modo que el cambio surte efecto de inmediato.',
+      'El error de clave pública en Añadir Administrador ahora se muestra en tu idioma.',
     de_DE:
-      'Das Hinzufügen oder Entfernen einer Adresse an der Schnittstelle Web-API startet die Registry jetzt neu, sodass die Änderung sofort wirksam wird.',
+      'Der Fehler zum öffentlichen Schlüssel in „Administrator hinzufügen“ wird jetzt in deiner Sprache angezeigt.',
     pl_PL:
-      'Dodanie lub usunięcie adresu w interfejsie API Web powoduje teraz ponowne uruchomienie rejestru, dzięki czemu zmiana działa od razu.',
+      'Błąd klucza publicznego w Dodaj Administratora jest teraz wyświetlany w twoim języku.',
     fr_FR:
-      'Ajouter ou retirer une adresse sur l’interface API Web redémarre désormais le registre, afin que le changement prenne effet immédiatement.',
+      'L’erreur de clé publique dans Ajouter un Administrateur s’affiche désormais dans votre langue.',
   },
   migrations: {
     up: async ({ effects }) => {},
