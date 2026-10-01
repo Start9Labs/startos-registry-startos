@@ -33,6 +33,7 @@ export default {
     28: 'Paquetes Alojados',
     29: 'Paquetes alojados: ${count}',
     30: 'Todavía no hay paquetes alojados en este registro.',
+    31: 'Debe ser una clave pública válida codificada en PEM',
   },
   de_DE: {
     0: 'Starte StartOS Registry!',
@@ -66,6 +67,7 @@ export default {
     28: 'Gehostete Pakete',
     29: 'Gehostete Pakete: ${count}',
     30: 'In dieser Registry sind noch keine Pakete gehostet.',
+    31: 'Muss ein gültiger PEM-kodierter öffentlicher Schlüssel sein',
   },
   pl_PL: {
     0: 'Uruchamianie StartOS Registry!',
@@ -99,6 +101,7 @@ export default {
     28: 'Hostowane Pakiety',
     29: 'Hostowane pakiety: ${count}',
     30: 'W tym rejestrze nie ma jeszcze żadnych pakietów.',
+    31: 'Musi być prawidłowym kluczem publicznym zakodowanym w PEM',
   },
   fr_FR: {
     0: 'Démarrage de StartOS Registry !',
@@ -132,5 +135,6 @@ export default {
     28: 'Paquets Hébergés',
     29: 'Paquets hébergés : ${count}',
     30: "Aucun paquet n'est encore hébergé sur ce registre.",
+    31: 'Doit être une clé publique valide encodée en PEM',
   },
 } satisfies Record<string, LangDict>
