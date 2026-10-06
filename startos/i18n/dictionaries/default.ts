@@ -30,11 +30,15 @@ const dict = {
   'Must be a valid matrix username (e.g. @user:domain.com)': 17,
   'Public Key': 18,
   'Must be a valid PEM encoded public key': 31,
+  'Identifies this administrator in the Remove Administrator list.': 33,
+  'How to reach this administrator. It is saved with their key on this registry.\n- Email: reach them at an email address\n- Matrix: reach them at a Matrix username': 34,
+  "The administrator's start-cli identity key in PEM form, as printed by start-cli pubkey on their workstation. Whoever holds the matching private key can administer this registry.": 35,
 
   // actions/removeAdmin.ts
   'Remove Administrator': 19,
   'Remove an administrator from this registry': 20,
-  Users: 21,
+  Administrator: 21,
+  'Removing an administrator also removes every authorization their key holds on this registry. Once the last one is removed, no key can administer the registry.': 32,
 
   // actions/listPackages.ts
   'List Packages': 26,

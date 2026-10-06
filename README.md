@@ -131,20 +131,20 @@ Registers a signer and grants it admin rights.
 - **Cost:** seconds. No restart.
 - **Repeat safety:** each run adds a new administrator; it is not an edit. Running it twice with the same key yields two records.
 - **The contact is stored as a URL** — an email becomes `mailto:`, a Matrix username becomes a `matrix.to` link.
-- **The key must be a PEM public key**, checked by pattern. There is no key generation here: the private half is yours and never touches this server.
+- **The key must be a PEM public key**, checked by pattern — the administrator's `start-cli` identity key, which `start-cli pubkey` prints. There is no key generation here: the private half is yours and never touches this server.
 
 ### Remove Administrator
 
 Revokes an administrator by removing their signer record.
 
-- **What it changes:** the daemon's store, via `start-registry admin signer remove`.
+- **What it changes:** the daemon's store, via `start-registry admin signer remove`, which drops the signer and every authorization it holds.
 - **Cost:** seconds. No restart.
-- **Repeat safety:** idempotent per administrator; the dropdown is built from the live list.
+- **Repeat safety:** idempotent per administrator; the dropdown is built from the live list and starts with nothing selected.
 - **Nothing stops you removing the last one.** Do that and no key can administer the registry any more — recovery means the CLI inside the container.
 
 ### List Packages
 
-Shows how many packages the registry hosts and their names, alphabetically, as one comma-separated list.
+Shows how many packages the registry hosts and their names, alphabetically, one per line.
 
 - **What it changes:** nothing. It reads `start-registry package index` from the live daemon and formats it.
 - **Cost:** seconds. No restart. The index carries every package's icon and descriptions, so the read grows with the registry.
@@ -187,7 +187,7 @@ Both volumes are copied wholesale — `sdk.Backups.ofVolumes('config', 'main')`.
 2. **Removing the last administrator locks you out** of everything the actions do; nothing warns you first.
 3. **Every action needs the service running**, because they reach the daemon over a shared socket rather than a network port.
 4. **The manifest declares no architecture restriction**, so which architectures work is whatever the published image covers.
-5. **Categories are not configurable here yet** — the Configure Registry action sets name and icon only.
+5. **Categories are not configurable here yet** — the Configure Registry action sets name, icon, and description only.
 6. **Tor is not a dependency**, and a `tor-proxy` value is written whether or not Tor is installed.
 7. **Changing the Web API interface's addresses restarts the service.** The daemon cannot reload its hostname list, so a restart is how a new address starts accepting signed requests.
 

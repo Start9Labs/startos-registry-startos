@@ -34,8 +34,11 @@ export const inputSpec = InputSpec.of({
     )
 
     return {
-      name: i18n('Users'),
-      default: Object.keys(users).at(-1) || '',
+      name: i18n('Administrator'),
+      description: i18n(
+        'Removing an administrator also removes every authorization their key holds on this registry. Once the last one is removed, no key can administer the registry.',
+      ),
+      default: null,
       values: Object.entries(users).reduce(
         (obj, [id, user]) => ({
           ...obj,

@@ -12,11 +12,10 @@
 
 ## Getting set up
 
-After install you'll see two critical tasks. The registry can't be used until both are done.
+Install raises two tasks. Both run against the live registry, so start the service first. Until there is an administrator, nobody can publish to it.
 
 1. Run the **Configure Registry** task and set a registry name (and optionally an icon and a description).
-2. Run the **Add Administrator** task to register the first admin. You'll need a label, a contact (email address or Matrix username), and a PEM-encoded ed25519 public key. Whoever holds the matching private key signs every package you publish through this registry.
-3. Start the registry. Its hostnames will appear on the **Web API** interface.
+2. Run the **Add Administrator** task to register the first admin. You'll need a label, a contact (email address or Matrix username), and the admin's PEM-encoded ed25519 public key — `start-cli pubkey` prints it on the admin's workstation. Whoever holds the matching private key signs every package you publish through this registry.
 
 ## Using the registry
 
@@ -32,5 +31,5 @@ On a StartOS server that should install from your registry, add the registry's W
 
 - **Configure Registry** — change the registry's display name, icon, and description. The description appears above your services in the marketplace and may use markdown.
 - **Add Administrator** — register an additional admin signer. Each admin's public key, label, and contact are stored on the registry; the matching private key stays with the admin.
-- **Remove Administrator** — remove an admin signer from the registry. Pick the admin to remove from the list of currently registered signers.
+- **Remove Administrator** — remove an admin signer from the registry, along with every authorization their key holds. Pick the admin to remove from the list of currently registered signers. If you remove the last one, no key can administer the registry.
 - **List Packages** — see how many packages your registry hosts and their names.

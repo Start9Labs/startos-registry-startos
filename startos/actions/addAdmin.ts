@@ -7,11 +7,17 @@ const { InputSpec, Value, Variants } = sdk
 export const inputSpec = InputSpec.of({
   name: Value.text({
     name: i18n('Label'),
+    description: i18n(
+      'Identifies this administrator in the Remove Administrator list.',
+    ),
     default: null,
     required: true,
   }),
   contact: Value.union({
     name: i18n('Contact'),
+    description: i18n(
+      'How to reach this administrator. It is saved with their key on this registry.\n- Email: reach them at an email address\n- Matrix: reach them at a Matrix username',
+    ),
     default: 'email',
     variants: Variants.of({
       email: {
@@ -48,6 +54,9 @@ export const inputSpec = InputSpec.of({
   }),
   key: Value.textarea({
     name: i18n('Public Key'),
+    description: i18n(
+      "The administrator's start-cli identity key in PEM form, as printed by start-cli pubkey on their workstation. Whoever holds the matching private key can administer this registry.",
+    ),
     default: null,
     required: true,
     patterns: [
