@@ -15,7 +15,7 @@ export const manifest = setupManifest({
   images: {
     'startos-registry': {
       source: {
-        dockerTag: 'ghcr.io/start9labs/startos-registry:v1.1.0',
+        dockerTag: 'ghcr.io/start9labs/startos-registry:v1.1.1',
       },
     },
   },
