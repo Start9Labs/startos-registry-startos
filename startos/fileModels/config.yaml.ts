@@ -4,7 +4,7 @@ import { apiPort, mountpoint } from '../utils'
 
 const registryListen = `0.0.0.0:${apiPort}`
 
-const shape = z.object({
+const shape = z.looseObject({
   'registry-hostname': z.array(z.string()).catch([]),
   'registry-listen': z.literal(registryListen).catch(registryListen),
   // Written reactively in main from Tor's SOCKS bridge address; absent until
