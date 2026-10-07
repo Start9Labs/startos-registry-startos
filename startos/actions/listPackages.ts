@@ -58,9 +58,13 @@ export const listPackages = sdk.Action.withoutInput(
     return {
       version: '1',
       title: i18n('Packages hosted: ${count}', { count: titles.length }),
-      // the StartOS alert renders this as HTML
-      message: titles.map(escapeHtml).join(', '),
-      result: null,
+      message: null,
+      result: {
+        type: 'multiline',
+        name: i18n('Hosted Packages'),
+        description: null,
+        value: titles.join('\n'),
+      },
     }
   },
 )
@@ -75,8 +79,4 @@ function newestTitle(
     }))
     .sort((a, b) => b.parsed.compareForSort(a.parsed))
   return newest?.title ?? null
-}
-
-function escapeHtml(text: string): string {
-  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;')
 }

@@ -18,16 +18,23 @@ Freshly scaffolded? Work the
 guide page, not a file in this repo — read it, don't copy it in.
 
 Keep `README.md` (technical reference for an AI support or administering agent) and
-`instructions.md` (end-user docs) in sync with your changes.
+`instructions.md` (end-user docs) in sync with your changes. This file restates neither:
+whoever changes the package has both, so it carries only what they don't — repo mechanics,
+a change that looks right and is not, where the next thing gets added, a naming trap, a
+build or test invocation particular to this repo.
 
-**Bugs and feature requests are GitHub issues on this repo** — file them as you find them.
+**Fix a defect you spot rather than reporting it** — you have the package open and the
+context to be sure. File **a GitHub issue on this repo** only when the call isn't yours to
+make: you can't pin the cause down, two defensible fixes exist, or it's too large to ride on
+the work in hand. An open issue is a report, not a queue — implement one when you're asked
+to or when it's labelled `Approved`, then close it with `Closes #<n>`.
+
 Don't record work in the repo instead: no `TODO.md`, no `NOTES.md`, no `PLAN.md`. What you
 verified, tried, and decided belongs in the commit message and the PR body.
 
 ## This repo
 
-- **`sharedRun: true` on every subcontainer is what makes the actions work.** The `start-registry` CLI reaches the running `start-registryd` over the shared `/run` socket, not the network — drop it and every action fails with no daemon to talk to. It is also why every action is `only-running`.
-- **Tor is intentionally not a declared dependency**, even though `tor-startos/startos/utils` is imported for its host id and port. Declaring it would turn an optional path into an install requirement.
-- **`registry-hostname` must be rebuilt from the live address set, not appended to.** The daemon serves and signs against the hostnames it knows, so a removed address has to leave the list too — hence the array comparison before writing.
-- **Name, icon, description, and administrators live in the daemon's own store, not `config.yaml`.** Don't add them to the file model; the CLI is the only writer and the actions pre-fill from the live daemon.
-- **The image is pinned to `v<registry version>`, with no `arch` declared.** Never pin `:master`, which moves with every merge; architecture support follows the published image rather than the manifest.
+- **Keep `sharedRun: true` on every subcontainer.** The `start-registry` CLI reaches the running daemon through the shared `/run` socket; without it every action fails.
+- **Don't declare Tor as a dependency** for the `tor-startos` import — it would turn an optional outbound path into an install requirement.
+- **`config.yaml` holds only daemon settings.** Rebuild `registry-hostname` from the live address set, never append, so a removed address leaves the list; and don't model name, icon, description or administrators there — the daemon's own store owns them.
+- **Pin the image to `v<registry version>`, never `:master`**, which moves with every merge.

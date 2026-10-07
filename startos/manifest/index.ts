@@ -19,5 +19,4 @@ export const manifest = setupManifest({
       },
     },
   },
-  dependencies: {},
 })
