@@ -39,7 +39,7 @@ One image, published by Start9 as `ghcr.io/start9labs/startos-registry:v<version
 
 | Property      | Value                                                               |
 | ------------- | ------------------------------------------------------------------- |
-| Image         | `ghcr.io/start9labs/startos-registry:v1.1.0`                        |
+| Image         | `ghcr.io/start9labs/startos-registry:v1.1.1`                        |
 | Architectures | Whatever the image publishes — the manifest declares no restriction |
 | Command       | `start-registryd`                                                   |
 
@@ -197,7 +197,7 @@ Both volumes are copied wholesale — `sdk.Backups.ofVolumes('config', 'main')`.
 
 ```yaml
 package_id: startos-registry
-image: ghcr.io/start9labs/startos-registry:v1.1.0 # the start-registry release this version names
+image: ghcr.io/start9labs/startos-registry:v1.1.1 # the start-registry release this version names
 architectures: as published by the image # the manifest declares no restriction
 subcontainers:
   - startos-registry-sub # the running daemon
