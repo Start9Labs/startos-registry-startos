@@ -1,33 +1,33 @@
 import { VersionInfo, IMPOSSIBLE } from '@start9labs/start-sdk'
 
 export const current = VersionInfo.of({
-  version: '1.1.1:0',
+  version: '1.2.0:0',
   releaseNotes: {
-    en_US: `Updates StartOS Registry to 1.1.1. Clients see only the package revisions they need while every revision stays indexed, a registry's icon and description can be cleared, admin requests are accepted at any loopback address, and shared dependencies carry their latest security fixes. Full release notes: https://github.com/Start9Labs/start-technologies/releases/tag/start-registry%2Fv1.1.1
+    en_US: `Updates StartOS Registry to 1.2.0. Package icons are deduplicated in a cacheable content-addressed store, signature labels distinguish Ed25519ph from pure Ed25519, and dependencies include security fixes. Existing icons and signatures migrate automatically on startup; older StartOS and start-cli clients remain compatible. Updates start-sdk to 3.1.0.
 
-- Remove Administrator starts with no administrator selected.
-- Add Administrator and Remove Administrator explain their fields, including where to find an administrator's public key.
-- List Packages shows one package name per line.`,
-    es_ES: `Actualiza StartOS Registry a 1.1.1. Los clientes solo ven las revisiones de paquetes que necesitan mientras todas las revisiones siguen indexadas, el icono y la descripción de un registro se pueden borrar, las solicitudes de administración se aceptan en cualquier dirección de loopback y las dependencias compartidas incluyen sus últimas correcciones de seguridad. Notas completas de la versión: https://github.com/Start9Labs/start-technologies/releases/tag/start-registry%2Fv1.1.1
+A reverse proxy in front of the registry must forward /icons/. If this registry serves StartWRT, set startwrt: true in config.yaml to retain compatible signature labels for routers.
 
-- Eliminar Administrador empieza sin ningún administrador seleccionado.
-- Añadir Administrador y Eliminar Administrador explican sus campos, incluido dónde encontrar la clave pública de un administrador.
-- Listar Paquetes muestra un nombre de paquete por línea.`,
-    de_DE: `Aktualisiert StartOS Registry auf 1.1.1. Clients sehen nur die Paketrevisionen, die sie brauchen, während alle Revisionen indexiert bleiben, Symbol und Beschreibung einer Registry lassen sich entfernen, Admin-Anfragen werden an jeder Loopback-Adresse angenommen und gemeinsam genutzte Abhängigkeiten enthalten ihre neuesten Sicherheitskorrekturen. Vollständige Versionshinweise: https://github.com/Start9Labs/start-technologies/releases/tag/start-registry%2Fv1.1.1
+Full release notes: https://github.com/Start9Labs/start-technologies/releases/tag/start-registry%2Fv1.2.0`,
+    es_ES: `Actualiza StartOS Registry a 1.2.0. Los iconos de paquetes se deduplican en un almacén direccionado por contenido que admite caché, las etiquetas de firmas distinguen Ed25519ph de Ed25519 puro y las dependencias incluyen correcciones de seguridad. Los iconos y las firmas existentes migran automáticamente al arrancar; los clientes anteriores de StartOS y start-cli siguen siendo compatibles. Actualiza start-sdk a 3.1.0.
 
-- „Administrator entfernen“ beginnt ohne ausgewählten Administrator.
-- „Administrator hinzufügen“ und „Administrator entfernen“ erklären ihre Felder, auch wo der öffentliche Schlüssel eines Administrators zu finden ist.
-- „Pakete auflisten“ zeigt einen Paketnamen pro Zeile.`,
-    pl_PL: `Aktualizuje StartOS Registry do wersji 1.1.1. Klienci widzą tylko potrzebne im rewizje pakietów, a wszystkie rewizje pozostają w indeksie, ikonę i opis rejestru można usunąć, żądania administracyjne są przyjmowane pod dowolnym adresem pętli zwrotnej, a współdzielone zależności zawierają najnowsze poprawki bezpieczeństwa. Pełne informacje o wydaniu: https://github.com/Start9Labs/start-technologies/releases/tag/start-registry%2Fv1.1.1
+Un proxy inverso delante del registro debe reenviar /icons/. Si este registro sirve a StartWRT, establece startwrt: true en config.yaml para conservar etiquetas de firmas compatibles con los routers.
 
-- Usuń Administratora zaczyna bez wybranego administratora.
-- Dodaj Administratora i Usuń Administratora objaśniają swoje pola, w tym gdzie znaleźć klucz publiczny administratora.
-- Lista Pakietów pokazuje jedną nazwę pakietu w wierszu.`,
-    fr_FR: `Met à jour StartOS Registry vers la version 1.1.1. Les clients ne voient que les révisions de paquets dont ils ont besoin tandis que toutes les révisions restent indexées, l’icône et la description d’un registre peuvent être effacées, les requêtes d’administration sont acceptées sur n’importe quelle adresse de bouclage et les dépendances partagées intègrent leurs derniers correctifs de sécurité. Notes de version complètes : https://github.com/Start9Labs/start-technologies/releases/tag/start-registry%2Fv1.1.1
+Notas completas de la versión: https://github.com/Start9Labs/start-technologies/releases/tag/start-registry%2Fv1.2.0`,
+    de_DE: `Aktualisiert StartOS Registry auf 1.2.0. Paketsymbole werden in einem cachefähigen, inhaltsadressierten Speicher dedupliziert, Signaturkennungen unterscheiden Ed25519ph von reinem Ed25519 und Abhängigkeiten enthalten Sicherheitskorrekturen. Bestehende Symbole und Signaturen werden beim Start automatisch migriert; ältere StartOS- und start-cli-Clients bleiben kompatibel. Aktualisiert start-sdk auf 3.1.0.
 
-- Supprimer un Administrateur commence sans administrateur sélectionné.
-- Ajouter un Administrateur et Supprimer un Administrateur expliquent leurs champs, y compris où trouver la clé publique d’un administrateur.
-- Lister les Paquets affiche un nom de paquet par ligne.`,
+Ein Reverse-Proxy vor der Registry muss /icons/ weiterleiten. Wenn diese Registry StartWRT versorgt, muss startwrt: true in config.yaml gesetzt werden, damit Router kompatible Signaturkennungen erhalten.
+
+Vollständige Versionshinweise: https://github.com/Start9Labs/start-technologies/releases/tag/start-registry%2Fv1.2.0`,
+    pl_PL: `Aktualizuje StartOS Registry do wersji 1.2.0. Ikony pakietów są deduplikowane w magazynie adresowanym zawartością z obsługą pamięci podręcznej, etykiety podpisów odróżniają Ed25519ph od czystego Ed25519, a zależności zawierają poprawki bezpieczeństwa. Istniejące ikony i podpisy migrują automatycznie przy uruchomieniu; starsze klienty StartOS i start-cli pozostają kompatybilne. Aktualizuje start-sdk do wersji 3.1.0.
+
+Odwrotne proxy przed rejestrem musi przekazywać /icons/. Jeśli rejestr obsługuje StartWRT, ustaw startwrt: true w config.yaml, aby zachować etykiety podpisów zgodne z routerami.
+
+Pełne informacje o wydaniu: https://github.com/Start9Labs/start-technologies/releases/tag/start-registry%2Fv1.2.0`,
+    fr_FR: `Met à jour StartOS Registry vers la version 1.2.0. Les icônes de paquets sont dédupliquées dans un stockage adressé par contenu et compatible avec la mise en cache, les étiquettes de signatures distinguent Ed25519ph d’Ed25519 pur et les dépendances incluent des correctifs de sécurité. Les icônes et signatures existantes migrent automatiquement au démarrage ; les anciens clients StartOS et start-cli restent compatibles. Met à jour start-sdk vers la version 3.1.0.
+
+Un proxy inverse devant le registre doit transmettre /icons/. Si ce registre dessert StartWRT, définissez startwrt: true dans config.yaml pour conserver des étiquettes de signatures compatibles avec les routeurs.
+
+Notes de version complètes : https://github.com/Start9Labs/start-technologies/releases/tag/start-registry%2Fv1.2.0`,
   },
   migrations: {
     up: async ({ effects }) => {},
