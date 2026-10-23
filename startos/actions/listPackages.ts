@@ -61,9 +61,11 @@ export const listPackages = sdk.Action.withoutInput(
       message: null,
       result: {
         type: 'multiline',
-        name: i18n('Hosted Packages'),
-        description: null,
         value: titles.join('\n'),
+        copyable: true,
+        qr: false,
+        masked: false,
+        filename: null,
       },
     }
   },

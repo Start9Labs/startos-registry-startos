@@ -39,7 +39,7 @@ One image, published by Start9 as `ghcr.io/start9labs/startos-registry:v<version
 
 | Property      | Value                                                               |
 | ------------- | ------------------------------------------------------------------- |
-| Image         | `ghcr.io/start9labs/startos-registry:v1.1.1`                        |
+| Image         | `ghcr.io/start9labs/startos-registry` (release tag pinned in the manifest)                        |
 | Architectures | Whatever the image publishes — the manifest declares no restriction |
 | Command       | `start-registryd`                                                   |
 
@@ -59,7 +59,7 @@ Two volumes, one of which is mounted as a single file.
 | `main`   | `/var/lib/startos`                                         | The package index, the uploaded `.s9pk` files, and the admin/signer records |
 | `config` | its `config.yaml` at `/etc/startos/config.yaml`, as a file | The daemon's configuration                                                  |
 
-The `main` volume grows with whatever you publish — a registry hosting a handful of packages across several versions is measured in gigabytes.
+The `main` volume grows with whatever you publish — a registry hosting a handful of packages across several versions is measured in gigabytes. Its `icons/` directory holds content-addressed package and dependency icons; it is persistent data, included in volume backups alongside the index. Upstream migrates inline icons, signature labels, and commitment tags on startup before binding the API port; the wrapper adds no migration.
 
 ## File Models
 
@@ -83,6 +83,8 @@ A signed request to an address the interface does not publish fails with `invali
 **`tor-proxy` is always written, even with Tor absent.** The bridge lookup carries a fallback port, so the address stays constant whether or not Tor is installed — which keeps a Tor install or uninstall from restarting the registry. With no Tor running, outbound requests through it simply get connection-refused, which the daemon tolerates.
 
 The registry's name, icon, description, and administrators are **not** in this file. They live in the daemon's own store and are set through the actions.
+
+The file model preserves unmodeled keys. For a registry serving StartWRT, `startwrt: true` can be set in `config.yaml` on the `config` volume; restart the service after changing it. No action exposes this upstream compatibility setting.
 
 ## Dependencies
 
@@ -129,7 +131,7 @@ Registers a signer and grants it admin rights.
 
 - **What it changes:** the daemon's store — it adds a signer record with the label, contact, and public key, then grants that signer id admin.
 - **Cost:** seconds. No restart.
-- **Repeat safety:** each run adds a new administrator; it is not an edit. Running it twice with the same key yields two records.
+- **Repeat safety:** each run adds a new administrator; it is not an edit. The daemon rejects a key already registered to a signer.
 - **The contact is stored as a URL** — an email becomes `mailto:`, a Matrix username becomes a `matrix.to` link.
 - **The key must be a PEM public key**, checked by pattern — the administrator's `start-cli` identity key, which `start-cli pubkey` prints. There is no key generation here: the private half is yours and never touches this server.
 
@@ -147,7 +149,7 @@ Revokes an administrator by removing their signer record.
 Shows how many packages the registry hosts and their names, alphabetically, one per line.
 
 - **What it changes:** nothing. It reads `start-registry package index` from the live daemon and formats it.
-- **Cost:** seconds. No restart. The index carries every package's icon and descriptions, so the read grows with the registry.
+- **Cost:** seconds. No restart. The index carries icon references and descriptions, so the read grows with the registry.
 - **Repeat safety:** read-only.
 - **Each name is the title of the package's newest version.** A package whose versions have all been removed is left out.
 - **It is an overview, not the index.** Versions, architectures, package ids, download URLs, signers, and categories are not shown. `start-cli registry package index` from an administrator's workstation has all of those, and the marketplace lists a registry's packages with search and categories.
@@ -197,7 +199,7 @@ Both volumes are copied wholesale — `sdk.Backups.ofVolumes('config', 'main')`.
 
 ```yaml
 package_id: startos-registry
-image: ghcr.io/start9labs/startos-registry:v1.1.1 # the start-registry release this version names
+image: ghcr.io/start9labs/startos-registry # release tag pinned in the manifest
 architectures: as published by the image # the manifest declares no restriction
 subcontainers:
   - startos-registry-sub # the running daemon

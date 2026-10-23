@@ -27,6 +27,8 @@ From a workstation with `start-cli` (1.1.0 or newer) and the admin's private key
 
 On a StartOS server that should install from your registry, add the registry's Web API address as a trusted registry source. From that point on, packages you publish appear in that server's marketplace.
 
+If you put your own reverse proxy in front of the Web API, forward `/icons/` as well as the RPC, WebSocket, and download routes so package icons load.
+
 ### Actions
 
 - **Configure Registry** — change the registry's display name, icon, and description. The description appears above your services in the marketplace and may use markdown.
