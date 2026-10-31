@@ -38,6 +38,9 @@ export default {
     33: 'Identifica a este administrador en la lista de Eliminar Administrador.',
     34: 'Cómo contactar con este administrador. Se guarda junto a su clave en este registro.\n- Correo electrónico: contactarle en una dirección de correo\n- Matrix: contactarle en un nombre de usuario de Matrix',
     35: 'La clave de identidad de start-cli del administrador en formato PEM, tal como la muestra start-cli pubkey en su equipo. Quien tenga la clave privada correspondiente puede administrar este registro.',
+    36: 'Configurar notificaciones de seguridad',
+    37: 'Controla los anuncios de actualizaciones de seguridad del sistema. Cambiar este ajuste reinicia el servicio.',
+    38: 'Anunciar actualizaciones de seguridad del sistema',
   },
   de_DE: {
     0: 'Starte StartOS Registry!',
@@ -76,6 +79,9 @@ export default {
     33: 'Kennzeichnet diesen Administrator in der Liste von „Administrator entfernen“.',
     34: 'Wie dieser Administrator erreichbar ist. Wird zusammen mit seinem Schlüssel in dieser Registry gespeichert.\n- E-Mail: Erreichbar über eine E-Mail-Adresse\n- Matrix: Erreichbar über einen Matrix-Benutzernamen',
     35: 'Der start-cli-Identitätsschlüssel des Administrators im PEM-Format, wie ihn start-cli pubkey auf seinem Rechner ausgibt. Wer den passenden privaten Schlüssel besitzt, kann diese Registry verwalten.',
+    36: 'Sicherheitsbenachrichtigungen konfigurieren',
+    37: 'Steuert Ankündigungen von Betriebssystem-Sicherheitsupdates. Eine Änderung dieser Einstellung startet den Dienst neu.',
+    38: 'Betriebssystem-Sicherheitsupdates ankündigen',
   },
   pl_PL: {
     0: 'Uruchamianie StartOS Registry!',
@@ -114,6 +120,9 @@ export default {
     33: 'Oznacza tego administratora na liście w Usuń Administratora.',
     34: 'Jak skontaktować się z tym administratorem. Zapisywane razem z jego kluczem w tym rejestrze.\n- E-mail: kontakt przez adres e-mail\n- Matrix: kontakt przez nazwę użytkownika Matrix',
     35: 'Klucz tożsamości start-cli administratora w formacie PEM, wyświetlany przez start-cli pubkey na jego komputerze. Kto ma pasujący klucz prywatny, może administrować tym rejestrem.',
+    36: 'Konfiguruj powiadomienia o bezpieczeństwie',
+    37: 'Steruje ogłoszeniami o aktualizacjach bezpieczeństwa systemu. Zmiana tego ustawienia uruchamia usługę ponownie.',
+    38: 'Ogłaszaj aktualizacje bezpieczeństwa systemu',
   },
   fr_FR: {
     0: 'Démarrage de StartOS Registry !',
@@ -152,5 +161,8 @@ export default {
     33: 'Identifie cet administrateur dans la liste de Supprimer un Administrateur.',
     34: "Comment joindre cet administrateur. Enregistré avec sa clé sur ce registre.\n- E-mail : le joindre à une adresse e-mail\n- Matrix : le joindre à un nom d'utilisateur Matrix",
     35: "La clé d'identité start-cli de l'administrateur au format PEM, telle qu'affichée par start-cli pubkey sur son poste. Quiconque détient la clé privée correspondante peut administrer ce registre.",
+    36: 'Configurer les notifications de sécurité',
+    37: 'Contrôle les annonces de mises à jour de sécurité du système. Modifier ce paramètre redémarre le service.',
+    38: 'Annoncer les mises à jour de sécurité du système',
   },
 } satisfies Record<string, LangDict>

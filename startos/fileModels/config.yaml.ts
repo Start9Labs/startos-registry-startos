@@ -3,9 +3,11 @@ import { sdk } from '../sdk'
 import { apiPort, mountpoint } from '../utils'
 
 const registryListen = `0.0.0.0:${apiPort}`
+export const defaultSecurityNotifications = false
 
 const shape = z.looseObject({
   'registry-hostname': z.array(z.string()).catch([]),
+  'security-notifications': z.boolean().catch(defaultSecurityNotifications),
   'registry-listen': z.literal(registryListen).catch(registryListen),
   // Written reactively in main from Tor's SOCKS bridge address; absent until
   // main resolves and writes it.

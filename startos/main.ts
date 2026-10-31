@@ -25,6 +25,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
 
   // start-registryd reads registry-hostname once at startup, so a change has to restart it.
   await configYaml.read((c) => c['registry-hostname']).const(effects)
+  await configYaml.read((c) => c['security-notifications']).const(effects)
 
   return sdk.Daemons.of(effects).addDaemon('primary', {
     subcontainer: sdk.SubContainer.of(

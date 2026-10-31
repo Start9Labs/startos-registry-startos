@@ -48,7 +48,7 @@ One image, published by Start9 as `ghcr.io/start9labs/startos-registry:v<version
 | `startos-registry-sub`                                                             | The `primary` daemon — the one to `attach` to                    |
 | `get-info`, `set-info`, `add-admin`, `remove-admin`, `delete-key`, `list-packages` | Temporary; one per action, each running the `start-registry` CLI |
 
-**Every subcontainer here is declared `sharedRun: true`, and that is the whole mechanism behind the actions.** They share the daemon's `/run`, so the `start-registry` CLI in a temporary container reaches the running `start-registryd` over its socket rather than over the network. It is also why every action requires the service to be running: with no daemon there is no socket to talk to.
+**Every subcontainer here is declared `sharedRun: true`, which lets the CLI-backed actions reach the daemon.** They share the daemon's `/run`, so the `start-registry` CLI in a temporary container reaches the running `start-registryd` over its socket rather than over the network. These actions require the service to be running: with no daemon there is no socket to talk to. Configure Security Notifications writes the file model instead and needs no container.
 
 ## Volume and Data Layout
 
@@ -75,6 +75,7 @@ One model, holding the daemon's whole configuration. Everything else the registr
 | `datadir`           | Enforced  | The `main` volume's mount point                                 |
 | `registry-hostname` | Derived   | Every non-local hostname the API interface publishes            |
 | `tor-proxy`         | Derived   | Tor's SOCKS address over the LXC bridge, written on every start |
+| `security-notifications` | User | Whether to serve OS security-update announcements; defaults to false |
 
 **`registry-hostname` is the one that matters operationally.** The daemon reads the list once, at startup, and accepts a signed request — anything an administrator or signer sends — only when it was signed for a hostname on it. Init rebuilds the list from the addresses actually published and rewrites the file whenever the set changes, and `main` watches that one key, so a change restarts the service onto the new list. Add or remove an address and the registry restarts itself once, with nothing to run by hand.
 
@@ -83,6 +84,8 @@ A signed request to an address the interface does not publish fails with `invali
 **`tor-proxy` is always written, even with Tor absent.** The bridge lookup carries a fallback port, so the address stays constant whether or not Tor is installed — which keeps a Tor install or uninstall from restarting the registry. With no Tor running, outbound requests through it simply get connection-refused, which the daemon tolerates.
 
 The registry's name, icon, description, and administrators are **not** in this file. They live in the daemon's own store and are set through the actions.
+
+**`security-notifications` is controlled by Configure Security Notifications.** Changing it restarts the daemon, which reads it only at startup. When enabled, the registry serves a WebSocket security feed at `/os/security` for clients that support it; when disabled, connections to that feed are refused. OS release security metadata remains stored and served independently of this setting.
 
 The file model preserves unmodeled keys. For a registry serving StartWRT, `startwrt: true` can be set in `config.yaml` on the `config` volume; restart the service after changing it. No action exposes this upstream compatibility setting.
 
@@ -113,7 +116,7 @@ Both tasks require the service to be running, since both go through the CLI to t
 
 ## Actions
 
-Four actions, and **all four are only available while the service is running.**
+Five actions. Configure Registry, Add Administrator, Remove Administrator, and List Packages are **only available while the service is running**. Configure Security Notifications is available while running or stopped.
 
 ### Configure Registry
 
@@ -154,6 +157,15 @@ Shows how many packages the registry hosts and their names, alphabetically, one 
 - **Each name is the title of the package's newest version.** A package whose versions have all been removed is left out.
 - **It is an overview, not the index.** Versions, architectures, package ids, download URLs, signers, and categories are not shown. `start-cli registry package index` from an administrator's workstation has all of those, and the marketplace lists a registry's packages with search and categories.
 
+### Configure Security Notifications
+
+Enables or disables announcements of OS security updates to compatible clients. Disabled by default.
+
+- **What it changes:** `security-notifications` in `config.yaml`; a change restarts the running service automatically.
+- **Cost:** a brief restart. While stopped, the setting takes effect on the next start.
+- **Repeat safety:** idempotent; saving the current value does not restart the service.
+- **Scope:** controls the `/os/security` WebSocket feed, not the security flag on published OS releases. A reverse proxy must forward this path with WebSocket upgrades for subscribers to use it.
+
 ## Tasks
 
 Two tasks, both raised at install.
@@ -187,11 +199,12 @@ Both volumes are copied wholesale — `sdk.Backups.ofVolumes('config', 'main')`.
 
 1. **Administration is by public key only.** No accounts, no passwords, no web login — the private key is yours to keep.
 2. **Removing the last administrator locks you out** of everything the actions do; nothing warns you first.
-3. **Every action needs the service running**, because they reach the daemon over a shared socket rather than a network port.
+3. **The CLI-backed actions need the service running**, because they reach the daemon over a shared socket rather than a network port. Configure Security Notifications works while stopped too.
 4. **The manifest declares no architecture restriction**, so which architectures work is whatever the published image covers.
 5. **Categories are not configurable here yet** — the Configure Registry action sets name, icon, and description only.
 6. **Tor is not a dependency**, and a `tor-proxy` value is written whether or not Tor is installed.
 7. **Changing the Web API interface's addresses restarts the service.** The daemon cannot reload its hostname list, so a restart is how a new address starts accepting signed requests.
+8. **OS security-update announcements are opt-in.** Configure Security Notifications controls the feed and restarts the service when changed.
 
 ---
 
@@ -223,6 +236,7 @@ actions:
   - add-admin # only-running
   - remove-admin # only-running
   - list-packages # only-running, read-only
+  - security-notifications # any status; restarts on change
 tasks:
   - { action: config, severity: important }
   - { action: add-admin, severity: important }
