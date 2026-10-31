@@ -47,6 +47,10 @@ const dict = {
   'Packages hosted: ${count}': 29,
   'No packages are hosted on this registry yet.': 30,
 
+  'Configure Security Notifications': 36,
+  'Control OS security-update announcements. Changing this setting restarts the service.': 37,
+  'Announce OS Security Updates': 38,
+
   // init/adminTasks.ts
   'Set basic information about your registry': 22,
   'Add an administrator to your registry': 23,
