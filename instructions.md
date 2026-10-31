@@ -29,9 +29,16 @@ On a StartOS server that should install from your registry, add the registry's W
 
 If you put your own reverse proxy in front of the Web API, forward `/icons/` as well as the RPC, WebSocket, and download routes so package icons load.
 
+### OS security-update announcements
+
+If your registry hosts OS releases marked as security updates, **Configure Security Notifications** lets you announce them to compatible StartOS clients. Announcements are disabled by default. Changing the setting restarts the running registry; while stopped, the setting takes effect on the next start. It does not change the security metadata on published OS releases.
+
+If you use a reverse proxy, also forward `/os/security` with WebSocket upgrades for these announcements.
+
 ### Actions
 
 - **Configure Registry** — change the registry's display name, icon, and description. The description appears above your services in the marketplace and may use markdown.
 - **Add Administrator** — register an additional admin signer. Each admin's public key, label, and contact are stored on the registry; the matching private key stays with the admin.
 - **Remove Administrator** — remove an admin signer from the registry, along with every authorization their key holds. Pick the admin to remove from the list of currently registered signers. If you remove the last one, no key can administer the registry.
 - **List Packages** — see how many packages your registry hosts and their names.
+- **Configure Security Notifications** — enable or disable OS security-update announcements. Available while running or stopped; changing the setting restarts the running service.
