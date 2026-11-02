@@ -37,11 +37,11 @@
 
 One image, published by Start9 as `ghcr.io/start9labs/startos-registry:v<version>` for each `start-registry` release. The package pins the tag of the release its version names.
 
-| Property      | Value                                                               |
-| ------------- | ------------------------------------------------------------------- |
-| Image         | `ghcr.io/start9labs/startos-registry` (release tag pinned in the manifest)                        |
-| Architectures | Whatever the image publishes — the manifest declares no restriction |
-| Command       | `start-registryd`                                                   |
+| Property      | Value                                                                      |
+| ------------- | -------------------------------------------------------------------------- |
+| Image         | `ghcr.io/start9labs/startos-registry` (release tag pinned in the manifest) |
+| Architectures | Whatever the image publishes — the manifest declares no restriction        |
+| Command       | `start-registryd`                                                          |
 
 | Subcontainer                                                                       | Purpose                                                          |
 | ---------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
@@ -69,13 +69,13 @@ One model, holding the daemon's whole configuration. Everything else the registr
 | ------------- | -------- | ------ | ----------------------- | ---------------------- |
 | `config.yaml` | `config` | YAML   | Yes — `FileHelper.yaml` | Every init, and `main` |
 
-| Key                 | Ownership | Notes                                                           |
-| ------------------- | --------- | --------------------------------------------------------------- |
-| `registry-listen`   | Enforced  | The address the daemon binds inside its container               |
-| `datadir`           | Enforced  | The `main` volume's mount point                                 |
-| `registry-hostname` | Derived   | Every non-local hostname the API interface publishes            |
-| `tor-proxy`         | Derived   | Tor's SOCKS address over the LXC bridge, written on every start |
-| `security-notifications` | User | Whether to serve OS security-update announcements; defaults to false |
+| Key                      | Ownership | Notes                                                                |
+| ------------------------ | --------- | -------------------------------------------------------------------- |
+| `registry-listen`        | Enforced  | The address the daemon binds inside its container                    |
+| `datadir`                | Enforced  | The `main` volume's mount point                                      |
+| `registry-hostname`      | Derived   | Every non-local hostname the API interface publishes                 |
+| `tor-proxy`              | Derived   | Tor's SOCKS address over the LXC bridge, written on every start      |
+| `security-notifications` | User      | Whether to serve OS security-update announcements; defaults to false |
 
 **`registry-hostname` is the one that matters operationally.** The daemon reads the list once, at startup, and accepts a signed request — anything an administrator or signer sends — only when it was signed for a hostname on it. Init rebuilds the list from the addresses actually published and rewrites the file whenever the set changes, and `main` watches that one key, so a change restarts the service onto the new list. Add or remove an address and the registry restarts itself once, with nothing to run by hand.
 
