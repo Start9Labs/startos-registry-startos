@@ -15,4 +15,3 @@ git ls-remote --tags https://github.com/Start9Labs/start-technologies.git 'refs/
 ## Applying the bump
 
 - Set `images['startos-registry'].source.dockerTag` in `startos/manifest/index.ts` to `ghcr.io/start9labs/startos-registry:v<registry version>`. If that tag doesn't exist yet, the release's image-tagging workflow hasn't run; don't fall back to `:master`.
-- Set `version` in `startos/versions/current.ts` to `<registry version>:0` and write release notes for what that release changed (see `projects/start-registry/CHANGELOG.md`).
