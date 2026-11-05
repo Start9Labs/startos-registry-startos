@@ -61,6 +61,12 @@ function signerLabel(defaultValue: string | null = null) {
   })
 }
 
+function requireSignerLabel(label: string) {
+  const name = label.trim()
+  if (!name) throw new Error(i18n('A label is required.'))
+  return name
+}
+
 const addSpec = InputSpec.of({
   name: signerLabel(),
   contact: Value.text({
@@ -170,7 +176,14 @@ export const manageSigners = sdk.Action.withInput(
       return
     }
     if (operation.selection === 'add') {
-      const { name, contact, key, admin, offerForTrust } = operation.value
+      const {
+        name: label,
+        contact,
+        key,
+        admin,
+        offerForTrust,
+      } = operation.value
+      const name = requireSignerLabel(label)
       const trimmedContact = contact.trim()
       const contactUrl = trimmedContact.startsWith('@')
         ? `https://matrix.to/#/${trimmedContact}`
@@ -185,7 +198,7 @@ export const manageSigners = sdk.Action.withInput(
           'admin',
           'signer',
           'add',
-          `--name=${name.trim()}`,
+          `--name=${name}`,
           `--contact=${contactUrl}`,
           `--key=${key}`,
         ])
@@ -196,13 +209,8 @@ export const manageSigners = sdk.Action.withInput(
       return
     }
     const { selection: id, value } = operation.value.signer
-    const args = [
-      'admin',
-      'signer',
-      'edit',
-      id,
-      `--set-name=${value.name.trim()}`,
-    ]
+    const name = requireSignerLabel(value.name)
+    const args = ['admin', 'signer', 'edit', id, `--set-name=${name}`]
     await registryCli(effects, registry, args)
     await setPermissions(
       effects,

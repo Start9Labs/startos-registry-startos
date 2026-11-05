@@ -1,7 +1,17 @@
 import { registriesJson } from '../fileModels/registries.json'
 import { i18n } from '../i18n'
 import { sdk } from '../sdk'
-import { apiPort, maxRegistryPort } from '../utils'
+import {
+  apiPort,
+  maxRegistryIdLength,
+  maxRegistryPort,
+  registryIdPattern,
+  registryIdShape,
+} from '../utils'
+
+const registryIdError = i18n(
+  'Use 1–32 lowercase letters, digits, or single hyphens, starting with a letter and ending with a letter or digit.',
+)
 
 export const manageRegistries = sdk.Action.withInput(
   'manage-registries',
@@ -35,12 +45,11 @@ export const manageRegistries = sdk.Action.withInput(
               ),
               required: true,
               default: null,
+              maxLength: maxRegistryIdLength,
               patterns: [
                 {
-                  regex: '^[a-z][a-z0-9-]{0,31}$',
-                  description: i18n(
-                    'Use 1–32 lowercase letters, digits, or hyphens, starting with a letter.',
-                  ),
+                  regex: registryIdPattern,
+                  description: registryIdError,
                 },
               ],
             }),
@@ -58,6 +67,11 @@ export const manageRegistries = sdk.Action.withInput(
         .once()) ?? [],
   }),
   async ({ effects, input }) => {
+    if (
+      input.registries.some(({ id }) => !registryIdShape.safeParse(id).success)
+    ) {
+      throw new Error(registryIdError)
+    }
     await registriesJson.update(effects, (current) => {
       if (!current)
         throw new Error(

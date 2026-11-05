@@ -1,10 +1,16 @@
 import { FileHelper, ISB, T, z } from '@start9labs/start-sdk'
 import { i18n } from '../i18n'
 import { sdk } from '../sdk'
-import { Registry, apiPort, defaultRegistryId, maxRegistryPort } from '../utils'
+import {
+  Registry,
+  apiPort,
+  defaultRegistryId,
+  maxRegistryPort,
+  registryIdShape,
+} from '../utils'
 
 const registryShape = z.looseObject({
-  id: z.string().regex(/^[a-z][a-z0-9-]{0,31}$/),
+  id: registryIdShape,
   port: z.number().int().min(1).max(maxRegistryPort),
   enabled: z.boolean().catch(true),
 })

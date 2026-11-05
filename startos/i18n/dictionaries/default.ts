@@ -60,7 +60,7 @@ const dict = {
   'Removing a registry stops it and hides its interface. Its data and address settings are retained; add the same ID to restore it.': 42,
   'Registry ID': 43,
   'A permanent identifier, such as stable or beta. Changing it creates a different registry.': 44,
-  'Use 1–32 lowercase letters, digits, or hyphens, starting with a letter.': 45,
+  'Use 1–32 lowercase letters, digits, or single hyphens, starting with a letter and ending with a letter or digit.': 45,
   'Registry configuration is missing. Rebuild the service and try again.': 46,
   'No ports remain for another registry.': 47,
   'Paste a PEM public key from start-cli pubkey or a complete armored GPG public-key export. Never enter a private key.': 48,
