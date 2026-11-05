@@ -1,83 +1,113 @@
-import { T } from '@start9labs/start-sdk'
+import { T, z } from '@start9labs/start-sdk'
+import { isDeepStrictEqual } from 'node:util'
 import { i18n } from '../i18n'
 import { sdk } from '../sdk'
-import { Registry, registryCli } from '../utils'
-import { registryInput, selectedRegistry } from '../fileModels/registries.json'
+import { Registry, defaultRegistryId, registryCli } from '../utils'
+import {
+  activeRegistries,
+  registryInput,
+  selectedRegistry,
+} from '../fileModels/registries.json'
 
-const { InputSpec, Value, Variants } = sdk
+const { InputSpec, Value, List } = sdk
 
-type Signer = { name: string }
-type Signers = Record<string, Signer>
-type RegistryInfo = { trustSigners: Signers }
-
-const publicKey = Value.textarea({
-  name: i18n('Public Key'),
-  description: i18n(
-    'Paste a PEM public key from start-cli pubkey or a complete armored GPG public-key export. Never enter a private key.',
-  ),
-  required: true,
-  default: null,
-  minLength: 1,
-  patterns: [
-    {
-      regex:
-        '^(?:-----BEGIN PUBLIC KEY-----[\\s\\S]+-----END PUBLIC KEY-----|-----BEGIN PGP PUBLIC KEY BLOCK-----[\\s\\S]+-----END PGP PUBLIC KEY BLOCK-----)\\s*$',
-      description: i18n(
-        'Must be a PEM public key or an armored GPG public-key export.',
-      ),
-    },
-  ],
+const contactShape = z.union([
+  z.object({ email: z.string() }),
+  z.object({ matrix: z.string() }),
+  z.object({ website: z.string() }),
+])
+const signerShape = z.looseObject({
+  name: z.string(),
+  contact: z.array(contactShape),
+  keys: z.array(z.string()),
+  gpgExports: z
+    .array(
+      z.looseObject({
+        armored: z.string(),
+        keyFingerprints: z.record(z.string(), z.array(z.string())).catch({}),
+      }),
+    )
+    .catch([]),
 })
+const stateShape = z.looseObject({
+  signers: z.record(z.string(), signerShape),
+  admins: z.array(z.string()),
+  trustSigners: z.array(z.string()),
+})
+type Signer = z.infer<typeof signerShape>
+type State = z.infer<typeof stateShape>
 
-function permissions(admin = false, offerForTrust = false) {
-  return {
-    admin: Value.toggle({
-      name: i18n('Admin'),
-      description: i18n('Grant permission to administer this registry.'),
-      default: admin,
-    }),
-    offerForTrust: Value.toggle({
-      name: i18n('Offer for Trust'),
-      description: i18n(
-        'Offer this signer’s public keys to connecting StartOS servers. This does not grant administrator rights.',
-      ),
-      default: offerForTrust,
-    }),
-  }
-}
+const keyBlockPattern =
+  '-----BEGIN (PUBLIC KEY|PGP PUBLIC KEY BLOCK)-----[\\s\\S]*?-----END \\1-----'
+const publicKeyError = i18n(
+  'Must be a PEM public key or an armored GPG public-key export.',
+)
+const changedError = i18n(
+  'Signers changed while this form was open. Reopen it and try again.',
+)
 
-function signerLabel(defaultValue: string | null = null) {
-  return Value.text({
-    name: i18n('Label'),
-    required: true,
-    default: defaultValue,
-    minLength: 1,
-    patterns: [
+const signersSpec = InputSpec.of({
+  snapshot: Value.hidden(stateShape),
+  signers: Value.list(
+    List.obj(
       {
-        regex: '[\\s\\S]*\\S[\\s\\S]*',
-        description: i18n('A label is required.'),
+        name: i18n('Signers'),
+        description: i18n(
+          'Removing a signer from this list deletes all its authorizations. Local StartOS actions can restore an administrator.',
+        ),
       },
-    ],
-  })
-}
-
-function requireSignerLabel(label: string) {
-  const name = label.trim()
-  if (!name) throw new Error(i18n('A label is required.'))
-  return name
-}
-
-const addSpec = InputSpec.of({
-  name: signerLabel(),
-  contact: Value.text({
-    name: i18n('Contact'),
-    description: i18n('An email address, Matrix username, or contact URL.'),
-    required: true,
-    default: null,
-    minLength: 1,
-  }),
-  key: publicKey,
-  ...permissions(),
+      {
+        displayAs: '{{name}}',
+        spec: InputSpec.of({
+          id: Value.hidden(z.string().nullable().default(null)),
+          name: Value.text({
+            name: i18n('Label'),
+            default: null,
+            required: true,
+            minLength: 1,
+          }),
+          contacts: Value.list(
+            List.text(
+              {
+                name: i18n('Contacts'),
+                description: i18n(
+                  'Enter an email address, Matrix username, or contact URL.',
+                ),
+              },
+              { minLength: 1 },
+            ),
+          ),
+          key: Value.textarea({
+            name: i18n('Public Key'),
+            description: i18n(
+              'Paste PEM public keys or complete armored GPG public-key exports. Required for new signers; existing keys are read-only. Never enter a private key.',
+            ),
+            required: false,
+            default: null,
+            immutable: true,
+            patterns: [
+              {
+                regex: `^(?:\\s*${keyBlockPattern})+\\s*$`,
+                description: publicKeyError,
+              },
+            ],
+          }),
+          admin: Value.toggle({
+            name: i18n('Admin'),
+            description: i18n('Grant permission to administer this registry.'),
+            default: false,
+          }),
+          offerForTrust: Value.toggle({
+            name: i18n('Offer for Trust'),
+            description: i18n(
+              'Offer this signer’s public keys to connecting StartOS servers. This does not grant administrator rights.',
+            ),
+            default: false,
+          }),
+        }),
+      },
+    ),
+  ),
 })
 
 export const manageSigners = sdk.Action.withInput(
@@ -85,172 +115,239 @@ export const manageSigners = sdk.Action.withInput(
   async () => ({
     name: i18n('Manage Signers'),
     description: i18n(
-      'Add, edit, or remove signers and control administrator rights and trust offers.',
+      'Edit signer information, administrator rights, and trust offers.',
     ),
     warning: null,
     allowedStatuses: 'only-running',
     group: null,
     visibility: 'enabled',
   }),
-  registryInput(async (effects, registry) => {
-    const signers: Signers = JSON.parse(
-      (
-        await registryCli(effects, registry, [
-          'admin',
-          'signer',
-          'list',
-          '--format=json',
-        ])
-      ).stdout as string,
-    )
-    const admins: Signers = JSON.parse(
-      (await registryCli(effects, registry, ['admin', 'list', '--format=json']))
-        .stdout as string,
-    )
-    const info: RegistryInfo = JSON.parse(
-      (await registryCli(effects, registry, ['info', '--format=json']))
-        .stdout as string,
-    )
-    return InputSpec.of({
-      operation: Value.union({
-        name: i18n('Operation'),
-        default: 'add',
-        variants: Variants.of({
-          add: { name: i18n('Add Signer'), spec: addSpec },
-          edit: {
-            name: i18n('Edit Signer'),
-            spec: InputSpec.of({
-              signer: Value.union({
-                name: i18n('Signer'),
-                default: null,
-                variants: Variants.of(
-                  Object.fromEntries(
-                    Object.entries(signers).map(([id, signer]) => [
-                      id,
-                      {
-                        name: signer.name,
-                        spec: InputSpec.of({
-                          name: signerLabel(signer.name),
-                          ...permissions(id in admins, id in info.trustSigners),
-                        }),
-                      },
-                    ]),
-                  ),
-                ),
-              }),
-            }),
+  registryInput(async () => signersSpec),
+  async ({ effects }) => {
+    const registries = (await activeRegistries().once()) ?? []
+    const values = await Promise.all(
+      registries.map(async (registry) => {
+        const snapshot = await readState(effects, registry)
+        return [
+          registry.id,
+          {
+            snapshot,
+            signers: Object.entries(snapshot.signers)
+              .sort(([, a], [, b]) => a.name.localeCompare(b.name))
+              .map(([id, signer]) => ({
+                id,
+                name: signer.name,
+                contacts: signer.contact.map(contactToUrl),
+                key: publicKeys(signer),
+                admin: snapshot.admins.includes(id),
+                offerForTrust: snapshot.trustSigners.includes(id),
+              })),
           },
-          remove: {
-            name: i18n('Remove Signer'),
-            spec: InputSpec.of({
-              signer: Value.select({
-                name: i18n('Signer'),
-                description: i18n(
-                  'Removing a signer deletes all its authorizations. Revoking Admin alone keeps the signer. Local StartOS actions can restore an administrator.',
-                ),
-                default: null,
-                values: Object.fromEntries(
-                  Object.entries(signers).map(([id, signer]) => [
-                    id,
-                    signer.name,
-                  ]),
-                ),
-              }),
-            }),
-          },
-        }),
+        ] as const
       }),
-    })
-  }),
-  async () => null,
+    )
+    const selected =
+      values.find(([id]) => id === defaultRegistryId) ?? values[0]
+    if (!selected) return null
+    return {
+      registry: {
+        selection: selected[0],
+        value: selected[1],
+        other: Object.fromEntries(values.filter(([id]) => id !== selected[0])),
+      },
+    }
+  },
   async ({ effects, input }) => {
     const registry = await selectedRegistry(input.registry.selection)
-    const operation = input.registry.value.operation
-    if (operation.selection === 'remove') {
-      await registryCli(effects, registry, [
-        'admin',
-        'signer',
-        'remove',
-        operation.value.signer,
-      ])
-      return
-    }
-    if (operation.selection === 'add') {
-      const {
-        name: label,
-        contact,
-        key,
-        admin,
-        offerForTrust,
-      } = operation.value
-      const name = requireSignerLabel(label)
-      const trimmedContact = contact.trim()
-      const contactUrl = trimmedContact.startsWith('@')
-        ? `https://matrix.to/#/${trimmedContact}`
-        : /^[^\s@]+@[^\s@]+$/.test(trimmedContact) &&
-            !trimmedContact.includes(':')
-          ? `mailto:${trimmedContact}`
-          : trimmedContact
-      if (!trimmedContact)
-        throw new Error(i18n('A label and contact are required.'))
-      const id = (
+    const { snapshot, signers } = input.registry.value
+    const current = await readState(effects, registry)
+    if (!isDeepStrictEqual(snapshot, current)) throw new Error(changedError)
+
+    const seen = new Set<string>()
+    const desired = signers.map((signer) => {
+      const name = signer.name.trim()
+      if (!name) throw new Error(i18n('A label is required.'))
+      if (signer.id !== null) {
+        if (!Object.hasOwn(current.signers, signer.id))
+          throw new Error(changedError)
+        if (seen.has(signer.id))
+          throw new Error(i18n('Each existing signer must appear only once.'))
+        seen.add(signer.id)
+        if (
+          (signer.key ?? '').trim() !==
+          publicKeys(current.signers[signer.id]).trim()
+        ) {
+          throw new Error(
+            i18n(
+              'Existing signing keys cannot be changed here. Use the registry CLI to rotate keys.',
+            ),
+          )
+        }
+      }
+      return {
+        ...signer,
+        name,
+        contacts: signer.contacts.map(normalizeContact),
+        keys: signer.id === null ? parsePublicKeys(signer.key ?? '') : [],
+      }
+    })
+
+    for (const signer of desired) {
+      if (signer.id !== null) continue
+      signer.id = (
         await registryCli(effects, registry, [
           'admin',
           'signer',
           'add',
-          `--name=${name}`,
-          `--contact=${contactUrl}`,
-          `--key=${key}`,
+          `--name=${signer.name}`,
+          ...signer.contacts.map((contact) => `--contact=${contact}`),
+          ...signer.keys.map((key) => `--key=${key}`),
         ])
       ).stdout
         .toString()
         .trim()
-      await setPermissions(effects, registry, id, admin, offerForTrust)
-      return
     }
-    const { selection: id, value } = operation.value.signer
-    const name = requireSignerLabel(value.name)
-    const args = ['admin', 'signer', 'edit', id, `--set-name=${name}`]
-    await registryCli(effects, registry, args)
-    await setPermissions(
-      effects,
-      registry,
-      id,
-      value.admin,
-      value.offerForTrust,
+    for (const signer of desired) {
+      const id = signer.id!
+      const previous = current.signers[id]
+      if (previous) {
+        const contacts = previous.contact.map(contactToUrl)
+        const args = [
+          ...(signer.name === previous.name
+            ? []
+            : [`--set-name=${signer.name}`]),
+          ...unmatched(signer.contacts, contacts).map(
+            (contact) => `--add-contact=${contact}`,
+          ),
+          ...unmatched(contacts, signer.contacts).map(
+            (contact) => `--remove-contact=${contact}`,
+          ),
+        ]
+        if (args.length)
+          await registryCli(effects, registry, [
+            'admin',
+            'signer',
+            'edit',
+            id,
+            ...args,
+          ])
+      }
+      if (signer.admin !== current.admins.includes(id)) {
+        await registryCli(effects, registry, [
+          'admin',
+          signer.admin ? 'add' : 'remove',
+          id,
+        ])
+      }
+    }
+
+    const info: { trustSigners: Record<string, unknown> } = JSON.parse(
+      (await registryCli(effects, registry, ['info', '--format=json']))
+        .stdout as string,
     )
+    const previousTrust = new Set(Object.keys(info.trustSigners))
+    const trust = new Set(previousTrust)
+    for (const id of Object.keys(snapshot.signers)) trust.delete(id)
+    for (const signer of desired)
+      if (signer.offerForTrust) trust.add(signer.id!)
+    if (
+      trust.size !== previousTrust.size ||
+      [...trust].some((id) => !previousTrust.has(id))
+    ) {
+      await registryCli(effects, registry, [
+        'info',
+        'set-trust-signers',
+        ...trust,
+      ])
+    }
+    for (const id of Object.keys(snapshot.signers)) {
+      if (!seen.has(id))
+        await registryCli(effects, registry, ['admin', 'signer', 'remove', id])
+    }
   },
 )
 
-async function setPermissions(
+async function readState(
   effects: T.Effects,
   registry: Registry,
-  id: string,
-  admin: boolean,
-  offerForTrust: boolean,
-) {
-  const admins: Signers = JSON.parse(
+): Promise<State> {
+  const signers = JSON.parse(
+    (
+      await registryCli(effects, registry, [
+        'admin',
+        'signer',
+        'list',
+        '--format=json',
+      ])
+    ).stdout as string,
+  )
+  const admins = JSON.parse(
     (await registryCli(effects, registry, ['admin', 'list', '--format=json']))
       .stdout as string,
   )
-  if (admin !== Object.hasOwn(admins, id)) {
-    await registryCli(effects, registry, [
-      'admin',
-      admin ? 'add' : 'remove',
-      id,
-    ])
-  }
-  const info: RegistryInfo = JSON.parse(
+  const info = JSON.parse(
     (await registryCli(effects, registry, ['info', '--format=json']))
       .stdout as string,
   )
-  const selected = new Set(Object.keys(info.trustSigners))
-  if (offerForTrust === selected.has(id)) return
-  if (offerForTrust) selected.add(id)
-  else selected.delete(id)
-  await registryCli(effects, registry, [
-    'info',
-    'set-trust-signers',
-    ...selected,
-  ])
+  return stateShape.parse({
+    signers,
+    admins: Object.keys(admins).sort(),
+    trustSigners: Object.keys(info.trustSigners).sort(),
+  })
+}
+
+function contactToUrl(contact: z.infer<typeof contactShape>) {
+  if ('email' in contact) return `mailto:${contact.email}`
+  if ('matrix' in contact) return `https://matrix.to/#/${contact.matrix}`
+  return contact.website
+}
+
+function normalizeContact(value: string) {
+  const contact = value.trim()
+  if (!contact) throw new Error(i18n('A contact cannot be blank.'))
+  const url = contact.startsWith('@')
+    ? `https://matrix.to/#/${contact}`
+    : /^[^\s@]+@[^\s@]+$/.test(contact) && !contact.includes(':')
+      ? `mailto:${contact}`
+      : contact
+  try {
+    return new URL(url).toString()
+  } catch {
+    throw new Error(
+      i18n('Enter an email address, Matrix username, or contact URL.'),
+    )
+  }
+}
+
+function publicKeys(signer: Signer) {
+  const covered = new Set(
+    signer.gpgExports.flatMap((key) => Object.keys(key.keyFingerprints)),
+  )
+  return [
+    ...signer.gpgExports.map((key) => key.armored.trim()),
+    ...signer.keys
+      .filter((key) => !covered.has(key))
+      .map(
+        (key) => `-----BEGIN PUBLIC KEY-----\n${key}\n-----END PUBLIC KEY-----`,
+      ),
+  ].join('\n\n')
+}
+
+function parsePublicKeys(value: string) {
+  const pattern = new RegExp(keyBlockPattern, 'g')
+  const keys = [...value.matchAll(pattern)].map((match) => match[0])
+  if (!keys.length)
+    throw new Error(i18n('A public key is required for each new signer.'))
+  if (value.replace(pattern, '').trim()) throw new Error(publicKeyError)
+  return keys
+}
+
+function unmatched(values: string[], matches: string[]) {
+  const remaining = [...matches]
+  return values.filter((value) => {
+    const index = remaining.indexOf(value)
+    if (index < 0) return true
+    remaining.splice(index, 1)
+    return false
+  })
 }

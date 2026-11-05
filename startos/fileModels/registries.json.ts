@@ -47,23 +47,22 @@ export function registryInput<Type extends Record<string, unknown>>(
   return sdk.InputSpec.of({
     registry: sdk.Value.dynamicUnion(async ({ effects }) => {
       const registries = (await activeRegistries().once()) ?? []
+      const variants: Record<
+        string,
+        { name: string; spec: ISB.InputSpec<Type> }
+      > = Object.fromEntries(
+        await Promise.all(
+          registries.map(async (registry) => [
+            registry.id,
+            { name: registry.id, spec: await build(effects, registry) },
+          ]),
+        ),
+      )
       return {
         name: i18n('Registry'),
         default: registries.length === 1 ? registries[0].id : null,
         disabled: false,
-        variants: sdk.Variants.of(
-          Object.fromEntries(
-            await Promise.all(
-              registries.map(async (registry) => [
-                registry.id,
-                {
-                  name: registry.id,
-                  spec: await build(effects, registry),
-                },
-              ]),
-            ),
-          ),
-        ),
+        variants: sdk.Variants.of(variants),
       }
     }),
   })

@@ -98,11 +98,13 @@ Use this to change the selected registry's display metadata through its live CLI
 
 ### Manage Signers
 
-Use this for signer registration, administrator grants, trust proposals, and removal, through the selected daemon's CLI. The form reads live state. Add registers a new identity; repeating it with an already registered key is rejected by upstream. Editing permissions is idempotent and needs no restart.
+The form pre-fills one editable list with every signer on the selected registry, including labels, contacts, public keys, Admin, and Offer for Trust. The standard list controls create or remove entries; there is no operation selector or separate add form. Saving reconciles the list through the selected daemon's CLI. An unchanged list performs no writes and needs no restart.
 
 Admin and Offer for Trust are independent: an administrator need not be offered to clients, and a proposed signer need not administer the registry. Signer removal drops its authorizations; revoking Admin retains the signer and its other authorizations. Trust proposals are maintained as a complete selected-ID set, preserving unrelated signers.
 
-No private key is accepted or stored. GPG public exports are passed intact to upstream rather than converted to bare Ed25519 keys, retaining certificate identities and fingerprints. Upstream imports supported Ed25519 signing keys, not arbitrary RSA or ECDSA keys. Editing changes the label and permission flags, leaving existing keys, contacts, and package authorizations intact. Key rotation and contact edits use the upstream CLI.
+No private key is accepted or stored. New entries accept PEM public keys and complete armored GPG public exports, retaining certificate identities and fingerprints. Upstream imports supported Ed25519 signing keys, not arbitrary RSA or ECDSA keys. Existing public keys are shown read-only; key rotation uses the upstream CLI. Editing labels, contacts, and permission flags preserves signer IDs, keys, and package authorizations. Removing a list entry deletes that signer's authorizations.
+
+Switching registries loads that registry's prefilled list. A stale form is rejected before any writes if signer records, administrator membership, or trust selection changed after opening it. CLI updates are not transactional: after a command failure, reopen the form to inspect any completed changes before retrying.
 
 Trust selection uses upstream's full-set replacement API. The action rereads the selected set before changing membership; simultaneous external edits can still overwrite one another.
 

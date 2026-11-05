@@ -79,6 +79,17 @@ const dict = {
   'Web API — ${registry}': 66,
   Registry: 67,
   'This registry is no longer enabled. Reopen the action and try again.': 68,
+  Signers: 69,
+  Contacts: 70,
+  'Removing a signer from this list deletes all its authorizations. Local StartOS actions can restore an administrator.': 71,
+  'Paste PEM public keys or complete armored GPG public-key exports. Required for new signers; existing keys are read-only. Never enter a private key.': 72,
+  'Edit signer information, administrator rights, and trust offers.': 73,
+  'Signers changed while this form was open. Reopen it and try again.': 74,
+  'Each existing signer must appear only once.': 75,
+  'Existing signing keys cannot be changed here. Use the registry CLI to rotate keys.': 76,
+  'A contact cannot be blank.': 77,
+  'Enter an email address, Matrix username, or contact URL.': 78,
+  'A public key is required for each new signer.': 79,
 } as const
 
 /**

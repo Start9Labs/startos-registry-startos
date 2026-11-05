@@ -13,7 +13,7 @@
 ## Getting set up
 
 1. Use **Configure Registry**, select `default`, and set a name, optionally an icon and description.
-2. Open **Manage Signers**, select `default`, and add your first signer. Supply their label, contact, and public key. For a StartOS identity, `start-cli pubkey` prints the PEM public key on their workstation. You can also paste an armored GPG public-key export. Never paste a private key.
+2. Open **Manage Signers** and select `default`. Use the **Signers** list to enter your first signer, with a label, contacts, and public key. For a StartOS identity, `start-cli pubkey` prints the PEM public key on their workstation. You can also paste an armored GPG public-key export. Never paste a private key.
 3. Check **Admin** to let this signer administer the registry. Check **Offer for Trust** only if you want connecting StartOS servers to be offered this signer's keys.
 4. Use the registry's **Web API** address when publishing from your workstation or subscribing another StartOS server.
 
@@ -29,13 +29,13 @@ Removing an entry in **Manage Registries** stops that registry and hides its int
 
 ## Managing signers
 
-**Manage Signers** adds, edits, or removes a signer on the registry you select. **Admin** and **Offer for Trust** are separate choices:
+**Manage Signers** shows all signers for the selected registry in one editable list. Edit their labels, contacts, and permission settings directly. The built-in list controls let you create entries or remove them; saving applies the list. **Admin** and **Offer for Trust** are separate choices:
 
 - **Admin** grants registry administration. Unchecking it revokes administration without deleting the signer.
 - **Offer for Trust** includes the signer's public keys in the trust proposal clients receive from this registry. It does not grant administrator rights.
 - Removing a signer also removes its authorizations. You can still use this StartOS action to add an administrator if you remove the last one.
 
-The matching private keys stay with their owners. GPG public exports retain their identities and fingerprints and must contain supported Ed25519 signing keys. Use the upstream CLI to rotate an existing signer's keys or change their contacts.
+The matching private keys stay with their owners. GPG public exports retain their identities and fingerprints and must contain supported Ed25519 signing keys. Existing public keys are read-only; use the upstream CLI to rotate them.
 
 ## Publishing and subscribing
 
