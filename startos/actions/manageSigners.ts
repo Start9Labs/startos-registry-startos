@@ -46,69 +46,90 @@ const changedError = i18n(
   'Signers changed while this form was open. Reopen it and try again.',
 )
 
-const signersSpec = InputSpec.of({
-  snapshot: Value.hidden(stateShape),
-  signers: Value.list(
-    List.obj(
-      {
-        name: i18n('Signers'),
-        description: i18n(
-          'Removing a signer from this list deletes all its authorizations. Local StartOS actions can restore an administrator.',
-        ),
-      },
-      {
-        displayAs: '{{name}}',
-        spec: InputSpec.of({
-          id: Value.hidden(z.string().nullable().default(null)),
-          name: Value.text({
-            name: i18n('Label'),
-            default: null,
-            required: true,
-            minLength: 1,
-          }),
-          contacts: Value.list(
-            List.text(
-              {
-                name: i18n('Contacts'),
-                description: i18n(
-                  'Enter an email address, Matrix username, or contact URL.',
-                ),
-              },
-              { minLength: 1 },
-            ),
-          ),
-          key: Value.textarea({
-            name: i18n('Public Key'),
-            description: i18n(
-              'Paste PEM public keys or complete armored GPG public-key exports. Required for new signers; existing keys are read-only. Never enter a private key.',
-            ),
-            required: false,
-            default: null,
-            immutable: true,
-            patterns: [
-              {
-                regex: `^(?:\\s*${keyBlockPattern})+\\s*$`,
-                description: publicKeyError,
-              },
-            ],
-          }),
-          admin: Value.toggle({
-            name: i18n('Admin'),
-            description: i18n('Grant permission to administer this registry.'),
-            default: false,
-          }),
-          offerForTrust: Value.toggle({
-            name: i18n('Offer for Trust'),
-            description: i18n(
-              'Offer this signer’s public keys to connecting StartOS servers. This does not grant administrator rights.',
-            ),
-            default: false,
-          }),
-        }),
-      },
+function signersSpec(snapshot: State) {
+  const defaults = Object.entries(snapshot.signers)
+    .sort(([, a], [, b]) => a.name.localeCompare(b.name))
+    .map(([id, signer]) => ({
+      id,
+      name: signer.name,
+      contacts: signer.contact.map(contactToUrl),
+      key: publicKeys(signer),
+      admin: snapshot.admins.includes(id),
+      offerForTrust: snapshot.trustSigners.includes(id),
+    }))
+  return InputSpec.of({
+    snapshot: Value.hidden(
+      z
+        .unknown()
+        .optional()
+        .transform(() => snapshot),
     ),
-  ),
-})
+    signers: Value.list(
+      List.obj(
+        {
+          name: i18n('Signers'),
+          // SDK 4.0.0 types object-list defaults as []; the renderer accepts entries.
+          default: defaults as [],
+          description: i18n(
+            'Removing a signer from this list deletes all its authorizations. Local StartOS actions can restore an administrator.',
+          ),
+        },
+        {
+          displayAs: '{{name}}',
+          spec: InputSpec.of({
+            id: Value.hidden(z.string().nullable().default(null)),
+            name: Value.text({
+              name: i18n('Label'),
+              default: null,
+              required: true,
+              minLength: 1,
+            }),
+            contacts: Value.list(
+              List.text(
+                {
+                  name: i18n('Contacts'),
+                  description: i18n(
+                    'Enter an email address, Matrix username, or contact URL.',
+                  ),
+                },
+                { minLength: 1 },
+              ),
+            ),
+            key: Value.textarea({
+              name: i18n('Public Key'),
+              description: i18n(
+                'Paste PEM public keys or complete armored GPG public-key exports. Required for new signers; existing keys are read-only. Never enter a private key.',
+              ),
+              required: false,
+              default: null,
+              immutable: true,
+              patterns: [
+                {
+                  regex: `^(?:\\s*${keyBlockPattern})+\\s*$`,
+                  description: publicKeyError,
+                },
+              ],
+            }),
+            admin: Value.toggle({
+              name: i18n('Admin'),
+              description: i18n(
+                'Grant permission to administer this registry.',
+              ),
+              default: false,
+            }),
+            offerForTrust: Value.toggle({
+              name: i18n('Offer for Trust'),
+              description: i18n(
+                'Offer this signer’s public keys to connecting StartOS servers. This does not grant administrator rights.',
+              ),
+              default: false,
+            }),
+          }),
+        },
+      ),
+    ),
+  })
+}
 
 export const manageSigners = sdk.Action.withInput(
   'manage-signers',
@@ -122,40 +143,14 @@ export const manageSigners = sdk.Action.withInput(
     group: null,
     visibility: 'enabled',
   }),
-  registryInput(async () => signersSpec),
-  async ({ effects }) => {
+  registryInput(async (effects, registry) =>
+    signersSpec(await readState(effects, registry)),
+  ),
+  async () => {
     const registries = (await activeRegistries().once()) ?? []
-    const values = await Promise.all(
-      registries.map(async (registry) => {
-        const snapshot = await readState(effects, registry)
-        return [
-          registry.id,
-          {
-            snapshot,
-            signers: Object.entries(snapshot.signers)
-              .sort(([, a], [, b]) => a.name.localeCompare(b.name))
-              .map(([id, signer]) => ({
-                id,
-                name: signer.name,
-                contacts: signer.contact.map(contactToUrl),
-                key: publicKeys(signer),
-                admin: snapshot.admins.includes(id),
-                offerForTrust: snapshot.trustSigners.includes(id),
-              })),
-          },
-        ] as const
-      }),
-    )
     const selected =
-      values.find(([id]) => id === defaultRegistryId) ?? values[0]
-    if (!selected) return null
-    return {
-      registry: {
-        selection: selected[0],
-        value: selected[1],
-        other: Object.fromEntries(values.filter(([id]) => id !== selected[0])),
-      },
-    }
+      registries.find((r) => r.id === defaultRegistryId) ?? registries[0]
+    return selected ? { registry: { selection: selected.id, value: {} } } : null
   },
   async ({ effects, input }) => {
     const registry = await selectedRegistry(input.registry.selection)
