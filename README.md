@@ -139,7 +139,7 @@ Restore brings back the same active registry set. Init derives each hostname lis
 3. There is no browser administration UI. Package curation and publishing use an external CLI and the publisher's private key.
 4. Categories and other upstream curation settings are not exposed by Configure Registry.
 5. Administrator grants and trust proposals are separate decisions. Offering a key does not grant publishing or administrator authority.
-6. The package's local Unix-socket actions remain available without an administrator key, including recovery after the last admin grant is removed.
+6. The package's local loopback-HTTP actions remain available without an administrator key, including recovery after the last admin grant is removed.
 
 ## Quick Reference for AI Consumers
 
