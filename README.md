@@ -32,7 +32,7 @@ The package pins a release of `ghcr.io/start9labs/startos-registry`. Each enable
 
 Temporary `cli-<id>` subcontainers run `start-registry --registry http://127.0.0.1:<port>` against the selected daemon. Every subcontainer uses `sharedRun: true` to share `/run/startos/registry.authcookie`. Upstream rereads this local administrative cookie on each request; it is shared across the service's registries, not a separate per-registry credential. Explicit loopback URLs prevent ambient CLI profiles from selecting another registry.
 
-Dynamic reconciliation starts, stops, or restarts only affected daemons. Changing one registry's hostnames or security-notification setting leaves the other registries running.
+Dynamic reconciliation starts, stops, or restarts only affected daemons. Changing one registry's hostnames leaves the other registries running.
 
 ## Volume and Data Layout
 
@@ -58,8 +58,6 @@ The instance inventory is seeded from schema defaults during init; daemon YAML f
 | `config/config.yaml` or `config/registries/<id>.yaml` | Per-registry daemon settings; hostname maintenance runs reactively in init, and main writes the optional outbound Tor proxy. |
 
 The package enforces the listener address and data directory. `registry-hostname` is rebuilt from that registry's enabled non-local interface addresses, never appended. A change restarts only the matching daemon because signed requests are validated against the hostname list read at startup.
-
-Configure Security Notifications owns `security-notifications`, defaulting to false. It controls the `/os/security` WebSocket feed, not the security metadata on indexed OS releases. A change restarts only that registry.
 
 The optional `tor-proxy` is written as a SOCKS URL even when Tor is absent; the bridge lookup's fallback port keeps the address stable across Tor installation changes. With no proxy running, outbound requests through it fail normally. Extra upstream settings such as `startwrt: true` survive file-model writes; restart the service after hand-editing such settings.
 
@@ -111,10 +109,6 @@ Trust selection uses upstream's full-set replacement API. The action rereads the
 ### List Packages
 
 Use this for a read-only overview of one registry's hosted packages. It returns alphabetically sorted titles, one per package at its newest version, and a count. Entries with no versions are omitted. Reads scale with the index; versions, architectures, categories, and signatures are not included in this summary.
-
-### Configure Security Notifications
-
-Use this to opt a selected registry into OS security announcements. Saving an unchanged value does not restart it. A changed value triggers a brief restart of that daemon; while stopped, it takes effect on the next start.
 
 ## Tasks
 
@@ -168,7 +162,6 @@ actions:
   - config
   - manage-signers
   - list-packages
-  - security-notifications
 tasks:
   - { action: config, severity: important }
   - { action: manage-signers, severity: important }

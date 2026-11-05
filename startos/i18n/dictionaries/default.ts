@@ -47,10 +47,6 @@ const dict = {
   'Packages hosted: ${count}': 29,
   'No packages are hosted on this registry yet.': 30,
 
-  'Configure Security Notifications': 36,
-  'Control OS security-update announcements. Changing this setting restarts the service.': 37,
-  'Announce OS Security Updates': 38,
-
   // init/adminTasks.ts
   'Set basic information about your registry': 22,
   'Add an administrator to your registry': 23,
@@ -80,7 +76,6 @@ const dict = {
   'Removing a signer deletes all its authorizations. Revoking Admin alone keeps the signer. Local StartOS actions can restore an administrator.': 62,
   'A label and contact are required.': 63,
   'A label is required.': 64,
-  'Control OS security-update announcements. Changing this setting restarts the selected registry.': 65,
   'Web API — ${registry}': 66,
   Registry: 67,
   'This registry is no longer enabled. Reopen the action and try again.': 68,

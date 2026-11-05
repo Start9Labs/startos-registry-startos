@@ -45,8 +45,6 @@ To use the packages on another StartOS server, add the chosen Web API address as
 
 If you use a separate reverse proxy, forward the RPC, WebSocket, download, and `/icons/` routes. If you publish through a tunnel to keep your home IP private, send outbound traffic through that tunnel too; remote registries and sites the registry fetches from can otherwise see your home IP.
 
-## Display and security announcements
+## Display
 
 **Configure Registry** changes a registry's display name, icon, and markdown description. Leave the icon or description blank to clear it.
-
-**Configure Security Notifications** controls OS security-update announcements for the selected registry. Disabled by default, it briefly restarts only that registry when changed. It does not change security metadata on published OS releases. A separate reverse proxy must also forward `/os/security` with WebSocket upgrades.

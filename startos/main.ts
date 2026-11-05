@@ -38,11 +38,8 @@ export const main = sdk.setupMain(async ({ effects }) => {
       await config.merge(effects, { 'tor-proxy': `socks5h://${torProxy}` })
 
       // start-registryd reads registry-hostname once at startup, so a change has to restart it.
-      const settings = await config
-        .read((c) => ({
-          hostnames: c['registry-hostname'],
-          securityNotifications: c['security-notifications'],
-        }))
+      const hostnames = await config
+        .read((c) => c['registry-hostname'])
         .const(effects)
       const daemonId =
         registry.id === defaultRegistryId
@@ -69,7 +66,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
           `registry-${registry.id}`,
         ),
         exec: { command: ['start-registryd'] },
-        uses: settings,
+        uses: hostnames,
         ready: {
           display: i18n('Web API — ${registry}', { registry: registry.id }),
           fn: () =>
