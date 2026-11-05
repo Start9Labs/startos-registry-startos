@@ -9,12 +9,7 @@
 > the upstream documentation is accurate and fully applicable — see the
 > Documentation section of `instructions.md` for links.
 
-[StartOS Registry](https://github.com/Start9Labs/start-technologies/tree/master/projects/start-registry/) is the server behind a StartOS marketplace: it indexes signed `.s9pk` packages and serves them to StartOS servers that add it. This package runs your own, administered entirely by public key — there is no account, no password, and no login anywhere in it.
-
-- **Upstream repo:** <https://github.com/Start9Labs/start-technologies/tree/master/projects/start-registry/>
-- **Wrapper repo:** <https://github.com/Start9Labs/startos-registry-startos/>
-
----
+[StartOS Registry](https://github.com/Start9Labs/start-technologies/tree/master/projects/start-registry/) indexes signed `.s9pk` packages and serves them to StartOS marketplaces. This package runs independent registry instances under one service, with separate data, signers, and network hosts.
 
 ## Table of Contents
 
@@ -31,215 +26,153 @@
 - [Limitations and Differences](#limitations-and-differences)
 - [Quick Reference for AI Consumers](#quick-reference-for-ai-consumers)
 
----
-
 ## Image and Container Runtime
 
-One image, published by Start9 as `ghcr.io/start9labs/startos-registry:v<version>` for each `start-registry` release. The package pins the tag of the release its version names.
+The package pins a release of `ghcr.io/start9labs/startos-registry`. Each enabled registry runs `start-registryd` in `registry-<id>`; attach to that subcontainer to inspect that instance. Architecture support follows the published image.
 
-| Property      | Value                                                                      |
-| ------------- | -------------------------------------------------------------------------- |
-| Image         | `ghcr.io/start9labs/startos-registry` (release tag pinned in the manifest) |
-| Architectures | Whatever the image publishes — the manifest declares no restriction        |
-| Command       | `start-registryd`                                                          |
+Temporary `cli-<id>` subcontainers run `start-registry --registry http://127.0.0.1:<port>` against the selected daemon. Every subcontainer uses `sharedRun: true` to share `/run/startos/registry.authcookie`. Upstream rereads this local administrative cookie on each request; it is shared across the service's registries, not a separate per-registry credential. Explicit loopback URLs prevent ambient CLI profiles from selecting another registry.
 
-| Subcontainer                                                                       | Purpose                                                          |
-| ---------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
-| `startos-registry-sub`                                                             | The `primary` daemon — the one to `attach` to                    |
-| `get-info`, `set-info`, `add-admin`, `remove-admin`, `delete-key`, `list-packages` | Temporary; one per action, each running the `start-registry` CLI |
-
-**Every subcontainer here is declared `sharedRun: true`, which lets the CLI-backed actions reach the daemon.** They share the daemon's `/run`, so the `start-registry` CLI in a temporary container reaches the running `start-registryd` over its socket rather than over the network. These actions require the service to be running: with no daemon there is no socket to talk to. Configure Security Notifications writes the file model instead and needs no container.
+Dynamic reconciliation starts, stops, or restarts only affected daemons. Changing one registry's hostnames or security-notification setting leaves the other registries running.
 
 ## Volume and Data Layout
 
-Two volumes, one of which is mounted as a single file.
+The package persists application data, daemon configuration, and instance inventory separately.
 
-| Volume   | Mount Point                                                | Purpose                                                                     |
-| -------- | ---------------------------------------------------------- | --------------------------------------------------------------------------- |
-| `main`   | `/var/lib/startos`                                         | The package index, the uploaded `.s9pk` files, and the admin/signer records |
-| `config` | its `config.yaml` at `/etc/startos/config.yaml`, as a file | The daemon's configuration                                                  |
+| Volume    | Content                                                                 | Container mount                                         |
+| --------- | ----------------------------------------------------------------------- | ------------------------------------------------------- |
+| `main`    | `default` uses the volume root; other registries use `registries/<id>/` | The selected registry's directory at `/var/lib/startos` |
+| `config`  | `default` uses `config.yaml`; others use `registries/<id>.yaml`         | The selected file at `/etc/startos/config.yaml`         |
+| `startos` | `registries.json`: IDs, internal ports, and enabled state               | Not mounted                                             |
 
-The `main` volume grows with whatever you publish — a registry hosting a handful of packages across several versions is measured in gigabytes. Its `icons/` directory holds content-addressed package and dependency icons; it is persistent data, included in volume backups alongside the index. Upstream migrates inline icons, signature labels, and commitment tags on startup before binding the API port; the wrapper adds no migration.
+A registry's store includes hosted assets, index, content-addressed icons, administrator grants, signer records, and trust proposals. The default registry retains the volume root and original network host. No application data is moved during updates.
+
+Removing a registry from the active list retains its data, configuration, port assignment, and host settings. Re-adding its ID reuses those resources. Disabled registry data remains in backups and consumes disk space.
 
 ## File Models
 
-One model, holding the daemon's whole configuration. Everything else the registry knows lives in its own store on the `main` volume, reachable only through the CLI.
+The instance inventory is seeded from schema defaults during init; daemon YAML files are seeded and maintained for each active registry. File models preserve unmodeled keys.
 
-| File          | Volume   | Format | Modelled                | Written by             |
-| ------------- | -------- | ------ | ----------------------- | ---------------------- |
-| `config.yaml` | `config` | YAML   | Yes — `FileHelper.yaml` | Every init, and `main` |
+| File                                                  | Ownership                                                                                                                    |
+| ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `startos/registries.json`                             | Manage Registries controls enabled IDs; the package allocates stable internal ports and retains disabled entries.            |
+| `config/config.yaml` or `config/registries/<id>.yaml` | Per-registry daemon settings; hostname maintenance runs reactively in init, and main writes the optional outbound Tor proxy. |
 
-| Key                      | Ownership | Notes                                                                |
-| ------------------------ | --------- | -------------------------------------------------------------------- |
-| `registry-listen`        | Enforced  | The address the daemon binds inside its container                    |
-| `datadir`                | Enforced  | The `main` volume's mount point                                      |
-| `registry-hostname`      | Derived   | Every non-local hostname the API interface publishes                 |
-| `tor-proxy`              | Derived   | Tor's SOCKS address over the LXC bridge, written on every start      |
-| `security-notifications` | User      | Whether to serve OS security-update announcements; defaults to false |
+The package enforces the listener address and data directory. `registry-hostname` is rebuilt from that registry's enabled non-local interface addresses, never appended. A change restarts only the matching daemon because signed requests are validated against the hostname list read at startup.
 
-**`registry-hostname` is the one that matters operationally.** The daemon reads the list once, at startup, and accepts a signed request — anything an administrator or signer sends — only when it was signed for a hostname on it. Init rebuilds the list from the addresses actually published and rewrites the file whenever the set changes, and `main` watches that one key, so a change restarts the service onto the new list. Add or remove an address and the registry restarts itself once, with nothing to run by hand.
+Configure Security Notifications owns `security-notifications`, defaulting to false. It controls the `/os/security` WebSocket feed, not the security metadata on indexed OS releases. A change restarts only that registry.
 
-A signed request to an address the interface does not publish fails with `invalid request signature: not valid for any identity this server recognizes`, while unsigned reads — `registry info`, the package index — keep working at the same address.
+The optional `tor-proxy` is written as a SOCKS URL even when Tor is absent; the bridge lookup's fallback port keeps the address stable across Tor installation changes. With no proxy running, outbound requests through it fail normally. Extra upstream settings such as `startwrt: true` survive file-model writes; restart the service after hand-editing such settings.
 
-**`tor-proxy` is always written, even with Tor absent.** The bridge lookup carries a fallback port, so the address stays constant whether or not Tor is installed — which keeps a Tor install or uninstall from restarting the registry. With no Tor running, outbound requests through it simply get connection-refused, which the daemon tolerates.
-
-The registry's name, icon, description, and administrators are **not** in this file. They live in the daemon's own store and are set through the actions.
-
-**`security-notifications` is controlled by Configure Security Notifications.** Changing it restarts the daemon, which reads it only at startup. When enabled, the registry serves a WebSocket security feed at `/os/security` for clients that support it; when disabled, connections to that feed are refused. OS release security metadata remains stored and served independently of this setting.
-
-The file model preserves unmodeled keys. For a registry serving StartWRT, `startwrt: true` can be set in `config.yaml` on the `config` volume; restart the service after changing it. No action exposes this upstream compatibility setting.
+Display name, icon, description, signers, administrator grants, and trust proposals belong to the daemon's store, not these file models. The actions read and write that live store rather than maintaining another copy.
 
 ## Dependencies
 
-None declared. Tor is used if present — see `tor-proxy` above — but is deliberately not a dependency: the registry works without it, and declaring it would make an optional outbound path into an install-time requirement.
+None declared. The package imports Tor's bridge constants for optional outbound SOCKS access, without making Tor an installation requirement.
 
 ## Network Access and Interfaces
 
-One interface. It is what a StartOS server adds as a marketplace, and what a publisher pushes to.
+Each active registry has an independent HTTP API interface on its own MultiHost. Distinct hosts allow separate domains and address choices.
 
-| Interface | Id    | Type | Port | Description                         |
-| --------- | ----- | ---- | ---- | ----------------------------------- |
-| Web API   | `api` | api  | 5959 | The web API of your custom registry |
+| Registry  | Host ID         | Interface ID    | Internal port                                                  |
+| --------- | --------------- | --------------- | -------------------------------------------------------------- |
+| `default` | `api-multi`     | `api`           | 5959                                                           |
+| Other IDs | `registry-<id>` | `registry-<id>` | Allocated monotonically above 5959; persisted in the inventory |
 
-The port is bound on the `api-multi` MultiHost and is not masked.
-
-**Publishing an address here is how the registry becomes usable to anyone else**, and it feeds `registry-hostname` directly. A registry only reachable on `.local` works, but only from the same LAN.
+The interfaces serve registry RPC, assets, icons, and WebSocket routes. They are unmasked APIs, not browser UIs. Hostnames from one registry are never added to another registry's accepted signing identities.
 
 ## Installation and First-Run Flow
 
-Install starts the daemon and raises two tasks. Nothing is generated and no credential is shown — this service has no accounts.
+A fresh install seeds and starts `default`. No credentials or private keys are generated. Two non-blocking tasks prompt for metadata and an administrator.
 
-1. **Configure Registry** — a name, and optionally an icon and a description. This is what StartOS servers display when they add your registry.
-2. **Add Administrator** — a label, a contact, and a **PEM-encoded public key**. That key is the whole of the authorization model: administration is proving possession of the matching private key, not logging in.
-
-Both tasks require the service to be running, since both go through the CLI to the live daemon. Both are `important`: the registry serves an empty index perfectly well without them, it just has no identity and nobody who can administer it.
+Additional registries start empty. They need their own metadata, signers, and address setup; enabling one does not clone another's store. CLI-backed forms query live registries and therefore require their daemons to be available.
 
 ## Actions
 
-Five actions. Configure Registry, Add Administrator, Remove Administrator, and List Packages are **only available while the service is running**. Configure Security Notifications is available while running or stopped.
+Registry-specific actions select an enabled registry. They never apply changes to all registries implicitly.
+
+### Manage Registries
+
+Use this to change the active instance set. It updates the inventory, interfaces, and dynamic daemon set. Saving an unchanged list is a no-op. Adding an ID creates an independent store; removing one stops its daemon and disables its interface without deleting data. Re-adding the same ID restores that instance rather than creating a fresh store. Renaming an ID is removal plus addition, not a metadata rename.
 
 ### Configure Registry
 
-Sets the registry's display name, icon, and description.
+Use this to change the selected registry's display metadata through its live CLI. Changes take seconds and require no restart. Saving the same values is idempotent. Blank icon or description clears the stored value.
 
-- **What it changes:** the daemon's own store, via `start-registry info set-name` / `set-icon` / `set-description`.
-- **Cost:** seconds. No restart.
-- **Repeat safety:** idempotent, and the form is pre-filled from the live daemon rather than from a file.
-- **The icon is a data URL or an http(s) URL**, validated by pattern before it is accepted. Leaving it blank leaves the existing icon in place rather than clearing it.
-- **The description is markdown**, shown above the registry's services in the marketplace. Blank leaves the existing one in place.
+### Manage Signers
 
-### Add Administrator
+Use this for signer registration, administrator grants, trust proposals, and removal, through the selected daemon's CLI. The form reads live state. Add registers a new identity; repeating it with an already registered key is rejected by upstream. Editing permissions is idempotent and needs no restart.
 
-Registers a signer and grants it admin rights.
+Admin and Offer for Trust are independent: an administrator need not be offered to clients, and a proposed signer need not administer the registry. Signer removal drops its authorizations; revoking Admin retains the signer and its other authorizations. Trust proposals are maintained as a complete selected-ID set, preserving unrelated signers.
 
-- **What it changes:** the daemon's store — it adds a signer record with the label, contact, and public key, then grants that signer id admin.
-- **Cost:** seconds. No restart.
-- **Repeat safety:** each run adds a new administrator; it is not an edit. The daemon rejects a key already registered to a signer.
-- **The contact is stored as a URL** — an email becomes `mailto:`, a Matrix username becomes a `matrix.to` link.
-- **The key must be a PEM public key**, checked by pattern — the administrator's `start-cli` identity key, which `start-cli pubkey` prints. There is no key generation here: the private half is yours and never touches this server.
+No private key is accepted or stored. GPG public exports are passed intact to upstream rather than converted to bare Ed25519 keys, retaining certificate identities and fingerprints. Upstream imports supported Ed25519 signing keys, not arbitrary RSA or ECDSA keys. Editing changes the label and permission flags, leaving existing keys, contacts, and package authorizations intact. Key rotation and contact edits use the upstream CLI.
 
-### Remove Administrator
-
-Revokes an administrator by removing their signer record.
-
-- **What it changes:** the daemon's store, via `start-registry admin signer remove`, which drops the signer and every authorization it holds.
-- **Cost:** seconds. No restart.
-- **Repeat safety:** idempotent per administrator; the dropdown is built from the live list and starts with nothing selected.
-- **Nothing stops you removing the last one.** Do that and no key can administer the registry any more — recovery means the CLI inside the container.
+Trust selection uses upstream's full-set replacement API. The action rereads the selected set before changing membership; simultaneous external edits can still overwrite one another.
 
 ### List Packages
 
-Shows how many packages the registry hosts and their names, alphabetically, one per line.
-
-- **What it changes:** nothing. It reads `start-registry package index` from the live daemon and formats it.
-- **Cost:** seconds. No restart. The index carries icon references and descriptions, so the read grows with the registry.
-- **Repeat safety:** read-only.
-- **Each name is the title of the package's newest version.** A package whose versions have all been removed is left out.
-- **It is an overview, not the index.** Versions, architectures, package ids, download URLs, signers, and categories are not shown. `start-cli registry package index` from an administrator's workstation has all of those, and the marketplace lists a registry's packages with search and categories.
+Use this for a read-only overview of one registry's hosted packages. It returns alphabetically sorted titles, one per package at its newest version, and a count. Entries with no versions are omitted. Reads scale with the index; versions, architectures, categories, and signatures are not included in this summary.
 
 ### Configure Security Notifications
 
-Enables or disables announcements of OS security updates to compatible clients. Disabled by default.
-
-- **What it changes:** `security-notifications` in `config.yaml`; a change restarts the running service automatically.
-- **Cost:** a brief restart. While stopped, the setting takes effect on the next start.
-- **Repeat safety:** idempotent; saving the current value does not restart the service.
-- **Scope:** controls the `/os/security` WebSocket feed, not the security flag on published OS releases. A reverse proxy must forward this path with WebSocket upgrades for subscribers to use it.
+Use this to opt a selected registry into OS security announcements. Saving an unchanged value does not restart it. A changed value triggers a brief restart of that daemon; while stopped, it takes effect on the next start.
 
 ## Tasks
 
-Two tasks, both raised at install.
-
-| Task               | Severity    | Raised when | Cleared when    |
-| ------------------ | ----------- | ----------- | --------------- |
-| Configure Registry | `important` | At install  | The action runs |
-| Add Administrator  | `important` | At install  | The action runs |
-
-`important` rather than `critical` because the daemon runs and serves regardless. What is missing without them is identity and the ability to publish, not function.
+Fresh installs raise two `important` tasks: Configure Registry and Manage Signers. Running the corresponding action clears each prompt. These prompts do not block startup and are not re-created on restore or rebuild. Additional registries are configured through the same actions without separate install tasks.
 
 ## Health Checks
 
-One check, on the only daemon.
+Each daemon probes its own internal TCP port. The default registry retains the `primary` health-check ID; others use `registry-<id>`. A failure means that registry did not bind its API listener; inspect its `registry-<id>` logs for rejected configuration or store errors. Another registry being healthy cannot satisfy this check.
 
-| Check     | Displayed | Method                 |
-| --------- | --------- | ---------------------- |
-| `primary` | "Web API" | Port 5959 is listening |
-
-The daemon binds quickly, so a failure means it did not start — most often a `config.yaml` value it rejects, which it names in the service logs. Actions failing while this check is green is a different symptom: those go through the shared `/run` socket rather than the port, so a CLI error points at the daemon's store or the argument it was given, not at reachability.
+A CLI action failing while its API port is healthy points instead at local-cookie authentication or CLI arguments. A daemon starting rotates the shared cookie; retry a management action that overlaps that rotation. All enabled daemons must be available for forms that read live state across registries.
 
 ## Backups and Restore
 
-Both volumes are copied wholesale — `sdk.Backups.ofVolumes('config', 'main')`. No dump step and nothing excluded.
+All three volumes are copied wholesale with `Backups.ofVolumes`. Backups include every registry's assets and store, daemon settings, enabled-state inventory, and retained disabled instances. Nothing is dumped or excluded, so size follows total hosted content, including disabled instances.
 
-- **Included:** every published `.s9pk`, the whole index, the administrator and signer records, and `config.yaml`.
-- **Size:** this is the large one. The backup is as big as everything you have ever published and not removed.
-- **Restore:** complete, and no task is raised — the name, icon, and administrators come back with the store. If the restored server publishes different addresses, init rewrites `registry-hostname` from the live set on the first start.
+Restore brings back the same active registry set. Init derives each hostname list from the restored server's live addresses. No first-install task is raised.
 
 ## Limitations and Differences
 
-1. **Administration is by public key only.** No accounts, no passwords, no web login — the private key is yours to keep.
-2. **Removing the last administrator locks you out** of everything the actions do; nothing warns you first.
-3. **The CLI-backed actions need the service running**, because they reach the daemon over a shared socket rather than a network port. Configure Security Notifications works while stopped too.
-4. **The manifest declares no architecture restriction**, so which architectures work is whatever the published image covers.
-5. **Categories are not configurable here yet** — the Configure Registry action sets name, icon, and description only.
-6. **Tor is not a dependency**, and a `tor-proxy` value is written whether or not Tor is installed.
-7. **Changing the Web API interface's addresses restarts the service.** The daemon cannot reload its hostname list, so a restart is how a new address starts accepting signed requests.
-8. **OS security-update announcements are opt-in.** Configure Security Notifications controls the feed and restarts the service when changed.
-
----
+1. Registry removal is non-destructive; there is no action to purge retained data.
+2. CLI-backed configuration forms require the enabled registry daemons to be available.
+3. There is no browser administration UI. Package curation and publishing use an external CLI and the publisher's private key.
+4. Categories and other upstream curation settings are not exposed by Configure Registry.
+5. Administrator grants and trust proposals are separate decisions. Offering a key does not grant publishing or administrator authority.
+6. The package's local Unix-socket actions remain available without an administrator key, including recovery after the last admin grant is removed.
 
 ## Quick Reference for AI Consumers
 
 ```yaml
 package_id: startos-registry
-image: ghcr.io/start9labs/startos-registry # release tag pinned in the manifest
-architectures: as published by the image # the manifest declares no restriction
+image: ghcr.io/start9labs/startos-registry
+architectures: as published by the image
 subcontainers:
-  - startos-registry-sub # the running daemon
-  - get-info # temporary; one per action, all sharedRun: true
-  - set-info
-  - add-admin
-  - remove-admin
-  - delete-key
-  - list-packages
+  - registry-<id>
+  - cli-<id>
 volumes:
-  main: /var/lib/startos
-  config: its config.yaml at /etc/startos/config.yaml (file mount)
+  main: per-registry directory mounted at /var/lib/startos
+  config: per-registry file mounted at /etc/startos/config.yaml
+  startos: not mounted
 file_models:
-  - config.yaml
+  - startos/registries.json
+  - config/config.yaml
+  - config/registries/<id>.yaml
 startos_managed_env_vars: []
-dependencies: [] # tor is used when present but not declared
+dependencies: []
 interfaces:
   api: { type: api, port: 5959 }
+  registry-<id>: { type: api, port: allocated per registry }
 actions:
-  - config # only-running
-  - add-admin # only-running
-  - remove-admin # only-running
-  - list-packages # only-running, read-only
-  - security-notifications # any status; restarts on change
+  - manage-registries
+  - config
+  - manage-signers
+  - list-packages
+  - security-notifications
 tasks:
   - { action: config, severity: important }
-  - { action: add-admin, severity: important }
+  - { action: manage-signers, severity: important }
 health_checks:
-  - primary # displayed "Web API"
+  - primary
+  - registry-<id> # additional registries
 ```

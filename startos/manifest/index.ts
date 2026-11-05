@@ -11,7 +11,7 @@ export const manifest = setupManifest({
   marketingUrl: 'https://github.com/Start9Labs/start-technologies/',
   donationUrl: 'https://donate.start9.com/',
   description: { short, long },
-  volumes: ['config', 'main'],
+  volumes: ['config', 'main', 'startos'],
   images: {
     'startos-registry': {
       source: {

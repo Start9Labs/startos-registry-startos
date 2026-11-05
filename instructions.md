@@ -2,43 +2,51 @@
 
 ## Documentation
 
-- [start-cli registry reference](https://docs.start9.com/start-os/cli-reference.html) — how to manage packages, categories, mirrors, and OS versions in your registry from the command line.
+- [start-cli registry reference](https://docs.start9.com/start-os/cli-reference.html) — manage packages, categories, mirrors, and OS versions from the command line.
 
 ## What you get on StartOS
 
-- A self-hosted package registry exposed as a **Web API** that other StartOS servers can subscribe to.
-- A registry data store you control, so anyone who trusts your registry can install the packages you publish.
-- There is no browser UI — all package curation is done from `start-cli` on a machine that has your admin key.
+- Independent registries, each with its own **Web API**, packages, signers, and address settings.
+- **Manage Registries** to add or disable registries, and **Manage Signers** to control signer permissions and trust offers.
+- No browser administration UI: publish and curate packages from your workstation with `start-cli`.
 
 ## Getting set up
 
-Install raises two tasks. Both run against the live registry, so start the service first. Until there is an administrator, nobody can publish to it.
+1. Use **Configure Registry**, select `default`, and set a name, optionally an icon and description.
+2. Open **Manage Signers**, select `default`, and add your first signer. Supply their label, contact, and public key. For a StartOS identity, `start-cli pubkey` prints the PEM public key on their workstation. You can also paste an armored GPG public-key export. Never paste a private key.
+3. Check **Admin** to let this signer administer the registry. Check **Offer for Trust** only if you want connecting StartOS servers to be offered this signer's keys.
+4. Use the registry's **Web API** address when publishing from your workstation or subscribing another StartOS server.
 
-1. Run the **Configure Registry** task and set a registry name (and optionally an icon and a description).
-2. Run the **Add Administrator** task to register the first admin. You'll need a label, a contact (email address or Matrix username), and the admin's PEM-encoded ed25519 public key — `start-cli pubkey` prints it on the admin's workstation. Whoever holds the matching private key signs every package you publish through this registry.
+## Multiple registries
 
-## Using the registry
+1. Open **Manage Registries** and add an ID such as `stable` or `beta`.
+2. Use **Configure Registry** and **Manage Signers** for the new registry. Each starts empty and has independent settings and permissions.
+3. Set addresses on its **Web API — <id>** interface. Different registries can use different domains.
 
-### Publishing and curating packages
+Keep IDs stable. Changing an ID creates a different registry, not a renamed copy. To rename the marketplace display, use **Configure Registry** instead.
 
-From a workstation with `start-cli` (1.1.0 or newer) and the admin's private key, point `start-cli` at the Web API address shown on the interface and use the `start-cli registry` subcommands to add packages, categories, mirrors, and OS versions, and to sign releases. The CLI is the only way to do this — the registry has no browser UI. Admin operations are authenticated with a per-request signature, so an older `start-cli` will be rejected. Each request is signed for the address it is sent to, so use an address the interface lists. When you add or remove an address there, the registry restarts itself so the change takes effect.
+Removing an entry in **Manage Registries** stops that registry and hides its interface but keeps its packages, signers, and address settings. Add the same ID again to bring it back. Retained registries still consume disk space and are included in backups.
 
-### Subscribing other servers
+## Managing signers
 
-On a StartOS server that should install from your registry, add the registry's Web API address as a trusted registry source. From that point on, packages you publish appear in that server's marketplace.
+**Manage Signers** adds, edits, or removes a signer on the registry you select. **Admin** and **Offer for Trust** are separate choices:
 
-If you put your own reverse proxy in front of the Web API, forward `/icons/` as well as the RPC, WebSocket, and download routes so package icons load.
+- **Admin** grants registry administration. Unchecking it revokes administration without deleting the signer.
+- **Offer for Trust** includes the signer's public keys in the trust proposal clients receive from this registry. It does not grant administrator rights.
+- Removing a signer also removes its authorizations. You can still use this StartOS action to add an administrator if you remove the last one.
 
-### OS security-update announcements
+The matching private keys stay with their owners. GPG public exports retain their identities and fingerprints and must contain supported Ed25519 signing keys. Use the upstream CLI to rotate an existing signer's keys or change their contacts.
 
-If your registry hosts OS releases marked as security updates, **Configure Security Notifications** lets you announce them to compatible StartOS clients. Announcements are disabled by default. Changing the setting restarts the running registry; while stopped, the setting takes effect on the next start. It does not change the security metadata on published OS releases.
+## Publishing and subscribing
 
-If you use a reverse proxy, also forward `/os/security` with WebSocket upgrades for these announcements.
+From a workstation holding an authorized private key, point `start-cli` at the chosen registry's Web API address and use the `start-cli registry` commands. Use an address listed on that registry's interface: authenticated requests are signed for their destination hostname. Changing one registry's addresses briefly restarts that registry, not the others.
 
-### Actions
+To use the packages on another StartOS server, add the chosen Web API address as a registry source. **List Packages** gives you a count and alphabetical list of the selected registry's package names.
 
-- **Configure Registry** — change the registry's display name, icon, and description. The description appears above your services in the marketplace and may use markdown.
-- **Add Administrator** — register an additional admin signer. Each admin's public key, label, and contact are stored on the registry; the matching private key stays with the admin.
-- **Remove Administrator** — remove an admin signer from the registry, along with every authorization their key holds. Pick the admin to remove from the list of currently registered signers. If you remove the last one, no key can administer the registry.
-- **List Packages** — see how many packages your registry hosts and their names.
-- **Configure Security Notifications** — enable or disable OS security-update announcements. Available while running or stopped; changing the setting restarts the running service.
+If you use a separate reverse proxy, forward the RPC, WebSocket, download, and `/icons/` routes. If you publish through a tunnel to keep your home IP private, send outbound traffic through that tunnel too; remote registries and sites the registry fetches from can otherwise see your home IP.
+
+## Display and security announcements
+
+**Configure Registry** changes a registry's display name, icon, and markdown description. Leave the icon or description blank to clear it.
+
+**Configure Security Notifications** controls OS security-update announcements for the selected registry. Disabled by default, it briefly restarts only that registry when changed. It does not change security metadata on published OS releases. A separate reverse proxy must also forward `/os/security` with WebSocket upgrades.

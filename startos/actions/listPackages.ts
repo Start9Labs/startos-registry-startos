@@ -1,13 +1,15 @@
 import { ExtendedVersion } from '@start9labs/start-sdk'
 import { i18n } from '../i18n'
 import { sdk } from '../sdk'
+import { registryCli } from '../utils'
+import { registrySelect, selectedRegistry } from '../fileModels/registries.json'
 
 // the slice of `start-registry package index` this action reads
 type PackageIndex = {
   packages: Record<string, { versions: Record<string, { title: string }> }>
 }
 
-export const listPackages = sdk.Action.withoutInput(
+export const listPackages = sdk.Action.withInput(
   // id
   'list-packages',
 
@@ -21,24 +23,20 @@ export const listPackages = sdk.Action.withoutInput(
     visibility: 'enabled',
   }),
 
+  sdk.InputSpec.of({ registry: registrySelect }),
+  async () => null,
+
   // the execution function
-  async ({ effects }) => {
-    const { packages } = await sdk.SubContainer.withTemp<PackageIndex>(
-      effects,
-      { imageId: 'startos-registry', sharedRun: true },
-      null,
-      'list-packages',
-      async (sub) =>
-        JSON.parse(
-          (
-            await sub.execFail([
-              'start-registry',
-              'package',
-              'index',
-              '--format=json',
-            ])
-          ).stdout as string,
-        ),
+  async ({ effects, input }) => {
+    const registry = await selectedRegistry(input.registry)
+    const { packages }: PackageIndex = JSON.parse(
+      (
+        await registryCli(effects, registry, [
+          'package',
+          'index',
+          '--format=json',
+        ])
+      ).stdout as string,
     )
 
     const titles = Object.values(packages)
