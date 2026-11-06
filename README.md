@@ -63,7 +63,7 @@ The package enforces the listener address and data directory. `registry-hostname
 
 The optional `tor-proxy` is written as a SOCKS URL even when Tor is absent; the bridge lookup's fallback port keeps the address stable across Tor installation changes. With no proxy running, outbound requests through it fail normally. Extra upstream settings such as `startwrt: true` survive file-model writes; restart the service after hand-editing such settings.
 
-Display name, icon, description, signers, administrator grants, and trust proposals belong to the daemon's store, not these file models. The actions read and write that live store rather than maintaining another copy.
+Published metadata, signers, administrator grants, and trust proposals remain authoritative in the daemon's store. Only names have the explicit cache/queue described above; icon, description, and permission actions read and write the live store directly.
 
 ## Dependencies
 
@@ -96,7 +96,7 @@ Use this to create, rename, enable, or disable registries by name. Names must be
 
 ### Configure Registry
 
-Use this to change the named registry's display metadata. Name changes are queued for the ready daemon to publish; icon and description changes use its live CLI directly. Changes take seconds and require no restart. Saving the same values is idempotent. Blank icon or description clears the stored value.
+Use this only to change the selected registry's icon and description through its live CLI. Registry naming belongs exclusively to Manage Registries; this form has no name field and cannot queue renames. Changes take seconds and require no restart. Saving the same values is idempotent. Blank icon or description clears the stored value.
 
 ### Manage Signers
 
@@ -116,7 +116,7 @@ Use this for a read-only overview of one registry's hosted packages. It returns 
 
 ## Tasks
 
-Fresh installs raise two `important` tasks: Configure Registry and Manage Signers. Running the corresponding action clears each prompt. These prompts do not block startup and are not re-created on restore or rebuild. Additional registries are configured through the same actions without separate install tasks.
+Fresh installs raise two `important` tasks: Manage Registries to name the initial registry, and Manage Signers. Running the corresponding action clears each prompt. These prompts do not block startup and are not re-created on restore or rebuild. Additional registries are configured through the same actions without separate install tasks. Upgrade migration retires the old Configure Registry prompt without creating a replacement on upgrade.
 
 ## Health Checks
 
@@ -167,7 +167,7 @@ actions:
   - manage-signers
   - list-packages
 tasks:
-  - { action: config, severity: important }
+  - { action: manage-registries, severity: important }
   - { action: manage-signers, severity: important }
 health_checks:
   - primary
