@@ -1,17 +1,17 @@
-import { registriesJson } from '../fileModels/registries.json'
+import { randomBytes } from 'node:crypto'
+import { isDeepStrictEqual } from 'node:util'
+import { z } from '@start9labs/start-sdk'
+import { registriesJson, withRegistryName } from '../fileModels/registries.json'
 import { i18n } from '../i18n'
 import { sdk } from '../sdk'
 import {
   apiPort,
-  maxRegistryIdLength,
   maxRegistryPort,
-  registryIdPattern,
-  registryIdShape,
+  registryDisplayName,
+  registryNameInput,
+  parseRegistryName,
+  assertUniqueRegistryNames,
 } from '../utils'
-
-const registryIdError = i18n(
-  'Use 1–32 lowercase letters, digits, or single hyphens, starting with a letter and ending with a letter or digit.',
-)
 
 export const manageRegistries = sdk.Action.withInput(
   'manage-registries',
@@ -25,53 +25,53 @@ export const manageRegistries = sdk.Action.withInput(
     group: null,
     visibility: 'enabled',
   }),
-  sdk.InputSpec.of({
-    registries: sdk.Value.list(
-      sdk.List.obj(
-        {
-          name: i18n('Registries'),
-          description: i18n(
-            'Removing a registry stops it and hides its interface. Its data and address settings are retained; add the same ID to restore it.',
-          ),
-        },
-        {
-          displayAs: '{{id}}',
-          uniqueBy: 'id',
-          spec: sdk.InputSpec.of({
-            id: sdk.Value.text({
-              name: i18n('Registry ID'),
-              description: i18n(
-                'A permanent identifier, such as stable or beta. Changing it creates a different registry.',
-              ),
-              required: true,
-              default: null,
-              maxLength: maxRegistryIdLength,
-              patterns: [
-                {
-                  regex: registryIdPattern,
-                  description: registryIdError,
-                },
-              ],
-            }),
-          }),
-        },
+  async () => {
+    const snapshot =
+      (await registriesJson.read((s) => s.registries).once()) ?? []
+    const defaults = snapshot.map((registry) => ({
+      id: registry.id,
+      name: registryDisplayName(registry),
+      enabled: registry.enabled,
+    }))
+    return sdk.InputSpec.of({
+      snapshot: sdk.Value.hidden(
+        z
+          .unknown()
+          .optional()
+          .transform(() => snapshot),
       ),
-    ),
-  }),
-  async () => ({
-    registries:
-      (await registriesJson
-        .read((s) =>
-          s.registries.filter((r) => r.enabled).map(({ id }) => ({ id })),
-        )
-        .once()) ?? [],
-  }),
+      registries: sdk.Value.list(
+        sdk.List.obj(
+          {
+            name: i18n('Registries'),
+            // SDK 4.0.0 types object-list defaults as []; the renderer accepts entries.
+            default: defaults as [],
+            description: i18n(
+              'Name each registry and choose whether it is enabled. Disabled or removed entries retain their data and addresses and remain listed here for restoration.',
+            ),
+          },
+          {
+            displayAs: '{{name}}',
+            uniqueBy: 'name',
+            spec: sdk.InputSpec.of({
+              id: sdk.Value.hidden(z.string().nullable().default(null)),
+              name: registryNameInput(null),
+              enabled: sdk.Value.toggle({
+                name: i18n('Enabled'),
+                default: true,
+              }),
+            }),
+          },
+        ),
+      ),
+    })
+  },
+  async () => null,
   async ({ effects, input }) => {
-    if (
-      input.registries.some(({ id }) => !registryIdShape.safeParse(id).success)
-    ) {
-      throw new Error(registryIdError)
-    }
+    const rows = input.registries.map((registry) => ({
+      ...registry,
+      name: parseRegistryName(registry.name),
+    }))
     await registriesJson.update(effects, (current) => {
       if (!current)
         throw new Error(
@@ -79,17 +79,59 @@ export const manageRegistries = sdk.Action.withInput(
             'Registry configuration is missing. Rebuild the service and try again.',
           ),
         )
-      const selected = new Set(input.registries.map((r) => r.id))
-      const registries = current.registries.map((r) => ({
-        ...r,
-        enabled: selected.has(r.id),
-      }))
-      let nextPort = Math.max(apiPort - 1, ...registries.map((r) => r.port)) + 1
-      for (const { id } of input.registries) {
-        if (registries.some((r) => r.id === id)) continue
+      if (!isDeepStrictEqual(current.registries, input.snapshot)) {
+        throw new Error(
+          i18n(
+            'Registries changed while this form was open. Reopen it and try again.',
+          ),
+        )
+      }
+      const selected = new Map<string, (typeof rows)[number]>()
+      for (const row of rows) {
+        if (row.id === null) continue
+        if (
+          selected.has(row.id) ||
+          !current.registries.some((registry) => registry.id === row.id)
+        ) {
+          throw new Error(
+            i18n(
+              'Registries changed while this form was open. Reopen it and try again.',
+            ),
+          )
+        }
+        selected.set(row.id, row)
+      }
+      assertUniqueRegistryNames([
+        ...current.registries
+          .filter((registry) => !selected.has(registry.id))
+          .map((registry) => registryDisplayName(registry)),
+        ...rows.map((row) => row.name),
+      ])
+      const registries = current.registries.map((registry) => {
+        const row = selected.get(registry.id)
+        return row
+          ? { ...withRegistryName(registry, row.name), enabled: row.enabled }
+          : { ...registry, enabled: false }
+      })
+      const ids = new Set(registries.map((registry) => registry.id))
+      let nextPort =
+        Math.max(apiPort - 1, ...registries.map((registry) => registry.port)) +
+        1
+      for (const row of rows) {
+        if (row.id !== null) continue
         if (nextPort > maxRegistryPort)
           throw new Error(i18n('No ports remain for another registry.'))
-        registries.push({ id, port: nextPort++, enabled: true })
+        let id: string
+        do {
+          id = `r-${randomBytes(12).toString('hex')}`
+        } while (ids.has(id))
+        ids.add(id)
+        registries.push({
+          id,
+          port: nextPort++,
+          enabled: row.enabled,
+          pendingName: row.name,
+        })
       }
       return { ...current, registries }
     })

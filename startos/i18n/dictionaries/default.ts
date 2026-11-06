@@ -90,6 +90,12 @@ const dict = {
   'A contact cannot be blank.': 77,
   'Enter an email address, Matrix username, or contact URL.': 78,
   'A public key is required for each new signer.': 79,
+  'Unnamed Registry': 80,
+  'Use a registry name of 1–32 characters.': 81,
+  'Name each registry and choose whether it is enabled. Disabled or removed entries retain their data and addresses and remain listed here for restoration.': 82,
+  Enabled: 83,
+  'Registries changed while this form was open. Reopen it and try again.': 84,
+  'Registry names must be unique. Enable the existing entry to restore a registry.': 85,
 } as const
 
 /**

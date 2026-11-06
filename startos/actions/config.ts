@@ -1,17 +1,19 @@
 import { i18n } from '../i18n'
 import { sdk } from '../sdk'
-import { registryCli } from '../utils'
-import { registryInput, selectedRegistry } from '../fileModels/registries.json'
+import {
+  RegistryInfo,
+  registryCli,
+  readRegistryInfo,
+  registryNameInput,
+  parseRegistryName,
+} from '../utils'
+import {
+  registryInput,
+  selectedRegistry,
+  requestRegistryName,
+} from '../fileModels/registries.json'
 
 const { InputSpec, Value } = sdk
-
-type RegistryInfo = {
-  name: string | null
-  icon: string | null
-  description?: string | Record<string, string> | null
-  // @TODO
-  // categories: Record<string, { name: string }>
-}
 
 export const config = sdk.Action.withInput(
   // id
@@ -28,17 +30,9 @@ export const config = sdk.Action.withInput(
   }),
   // form input specification
   registryInput(async (effects, registry) => {
-    const info: RegistryInfo = JSON.parse(
-      (await registryCli(effects, registry, ['info', '--format=json']))
-        .stdout as string,
-    )
+    const info = await readRegistryInfo(effects, registry)
     return InputSpec.of({
-      name: Value.text({
-        name: i18n('Registry Name'),
-        default: info.name,
-        required: true,
-        maxLength: 32,
-      }),
+      name: registryNameInput(registry.pendingName ?? info.name),
       icon: Value.text({
         name: i18n('Registry Icon'),
         default: info.icon,
@@ -74,16 +68,13 @@ export const config = sdk.Action.withInput(
   async ({ effects, input }) => {
     const registry = await selectedRegistry(input.registry.selection)
     const { name, icon, description } = input.registry.value
-    await registryCli(effects, registry, ['info', 'set-name', '--', name])
+    await requestRegistryName(effects, registry.id, parseRegistryName(name))
     await registryCli(effects, registry, [
       'info',
       'set-icon',
       ...(icon ? ['--', icon] : ['--clear']),
     ])
-    const info: RegistryInfo = JSON.parse(
-      (await registryCli(effects, registry, ['info', '--format=json']))
-        .stdout as string,
-    )
+    const info = await readRegistryInfo(effects, registry)
     if ((description || null) !== descriptionText(info.description)) {
       await registryCli(effects, registry, [
         'info',

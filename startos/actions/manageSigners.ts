@@ -2,11 +2,10 @@ import { T, z } from '@start9labs/start-sdk'
 import { isDeepStrictEqual } from 'node:util'
 import { i18n } from '../i18n'
 import { sdk } from '../sdk'
-import { Registry, defaultRegistryId, registryCli } from '../utils'
+import { Registry, registryCli, readRegistryInfo } from '../utils'
 import {
   activeRegistries,
-  registryInput,
-  selectedRegistry,
+  namedRegistries,
 } from '../fileModels/registries.json'
 
 const { InputSpec, Value, List } = sdk
@@ -143,124 +142,162 @@ export const manageSigners = sdk.Action.withInput(
     group: null,
     visibility: 'enabled',
   }),
-  registryInput(async (effects, registry) =>
-    signersSpec(await readState(effects, registry)),
-  ),
-  async () => {
-    const registries = (await activeRegistries().once()) ?? []
-    const selected =
-      registries.find((r) => r.id === defaultRegistryId) ?? registries[0]
-    return selected ? { registry: { selection: selected.id, value: {} } } : null
-  },
+  async ({ effects }) =>
+    InputSpec.of(
+      Object.fromEntries(
+        await Promise.all(
+          (await namedRegistries(effects)).map(
+            async (registry) =>
+              [
+                registry.id,
+                Value.object(
+                  { name: registry.name },
+                  signersSpec(await readState(effects, registry)),
+                ),
+              ] as const,
+          ),
+        ),
+      ),
+    ),
+  async () => null,
   async ({ effects, input }) => {
-    const registry = await selectedRegistry(input.registry.selection)
-    const { snapshot, signers } = input.registry.value
-    const current = await readState(effects, registry)
-    if (!isDeepStrictEqual(snapshot, current)) throw new Error(changedError)
-
-    const seen = new Set<string>()
-    const desired = signers.map((signer) => {
-      const name = signer.name.trim()
-      if (!name) throw new Error(i18n('A label is required.'))
-      if (signer.id !== null) {
-        if (!Object.hasOwn(current.signers, signer.id))
-          throw new Error(changedError)
-        if (seen.has(signer.id))
-          throw new Error(i18n('Each existing signer must appear only once.'))
-        seen.add(signer.id)
-        if (
-          (signer.key ?? '').trim() !==
-          publicKeys(current.signers[signer.id]).trim()
-        ) {
-          throw new Error(
-            i18n(
-              'Existing signing keys cannot be changed here. Use the registry CLI to rotate keys.',
-            ),
-          )
-        }
-      }
-      return {
-        ...signer,
-        name,
-        contacts: signer.contacts.map(normalizeContact),
-        keys: signer.id === null ? parsePublicKeys(signer.key ?? '') : [],
-      }
-    })
-
-    for (const signer of desired) {
-      if (signer.id !== null) continue
-      signer.id = (
-        await registryCli(effects, registry, [
-          'admin',
-          'signer',
-          'add',
-          `--name=${signer.name}`,
-          ...signer.contacts.map((contact) => `--contact=${contact}`),
-          ...signer.keys.map((key) => `--key=${key}`),
-        ])
-      ).stdout
-        .toString()
-        .trim()
-    }
-    for (const signer of desired) {
-      const id = signer.id!
-      const previous = current.signers[id]
-      if (previous) {
-        const contacts = previous.contact.map(contactToUrl)
-        const args = [
-          ...(signer.name === previous.name
-            ? []
-            : [`--set-name=${signer.name}`]),
-          ...unmatched(signer.contacts, contacts).map(
-            (contact) => `--add-contact=${contact}`,
-          ),
-          ...unmatched(contacts, signer.contacts).map(
-            (contact) => `--remove-contact=${contact}`,
-          ),
-        ]
-        if (args.length)
-          await registryCli(effects, registry, [
-            'admin',
-            'signer',
-            'edit',
-            id,
-            ...args,
-          ])
-      }
-      if (signer.admin !== current.admins.includes(id)) {
-        await registryCli(effects, registry, [
-          'admin',
-          signer.admin ? 'add' : 'remove',
-          id,
-        ])
-      }
-    }
-
-    const info: { trustSigners: Record<string, unknown> } = JSON.parse(
-      (await registryCli(effects, registry, ['info', '--format=json']))
-        .stdout as string,
-    )
-    const previousTrust = new Set(Object.keys(info.trustSigners))
-    const trust = new Set(previousTrust)
-    for (const id of Object.keys(snapshot.signers)) trust.delete(id)
-    for (const signer of desired)
-      if (signer.offerForTrust) trust.add(signer.id!)
+    const registries = (await activeRegistries().once()) ?? []
     if (
-      trust.size !== previousTrust.size ||
-      [...trust].some((id) => !previousTrust.has(id))
+      registries.length !== Object.keys(input).length ||
+      registries.some((registry) => !Object.hasOwn(input, registry.id))
     ) {
-      await registryCli(effects, registry, [
-        'info',
-        'set-trust-signers',
-        ...trust,
-      ])
+      throw new Error(
+        i18n(
+          'Registries changed while this form was open. Reopen it and try again.',
+        ),
+      )
     }
-    for (const id of Object.keys(snapshot.signers)) {
-      if (!seen.has(id))
-        await registryCli(effects, registry, ['admin', 'signer', 'remove', id])
+    const plans = await Promise.all(
+      registries.map(async (registry) => {
+        const current = await readState(effects, registry)
+        if (!isDeepStrictEqual(input[registry.id].snapshot, current))
+          throw new Error(changedError)
+        return {
+          registry,
+          current,
+          plan: prepareSigners(current, input[registry.id]),
+        }
+      }),
+    )
+    for (const { registry, current, plan } of plans) {
+      await reconcileSigners(effects, registry, current, plan)
     }
   },
 )
+
+function prepareSigners(
+  current: State,
+  { signers }: ReturnType<typeof signersSpec>['_TYPE'],
+) {
+  const seen = new Set<string>()
+  const desired = signers.map((signer) => {
+    const name = signer.name.trim()
+    if (!name) throw new Error(i18n('A label is required.'))
+    if (signer.id !== null) {
+      if (!Object.hasOwn(current.signers, signer.id))
+        throw new Error(changedError)
+      if (seen.has(signer.id))
+        throw new Error(i18n('Each existing signer must appear only once.'))
+      seen.add(signer.id)
+      if (
+        (signer.key ?? '').trim() !==
+        publicKeys(current.signers[signer.id]).trim()
+      ) {
+        throw new Error(
+          i18n(
+            'Existing signing keys cannot be changed here. Use the registry CLI to rotate keys.',
+          ),
+        )
+      }
+    }
+    return {
+      ...signer,
+      name,
+      contacts: signer.contacts.map(normalizeContact),
+      keys: signer.id === null ? parsePublicKeys(signer.key ?? '') : [],
+    }
+  })
+  return { seen, desired }
+}
+
+async function reconcileSigners(
+  effects: T.Effects,
+  registry: Registry,
+  current: State,
+  { seen, desired }: ReturnType<typeof prepareSigners>,
+) {
+  for (const signer of desired) {
+    if (signer.id !== null) continue
+    signer.id = (
+      await registryCli(effects, registry, [
+        'admin',
+        'signer',
+        'add',
+        `--name=${signer.name}`,
+        ...signer.contacts.map((contact) => `--contact=${contact}`),
+        ...signer.keys.map((key) => `--key=${key}`),
+      ])
+    ).stdout
+      .toString()
+      .trim()
+  }
+  for (const signer of desired) {
+    const id = signer.id!
+    const previous = current.signers[id]
+    if (previous) {
+      const contacts = previous.contact.map(contactToUrl)
+      const args = [
+        ...(signer.name === previous.name ? [] : [`--set-name=${signer.name}`]),
+        ...unmatched(signer.contacts, contacts).map(
+          (contact) => `--add-contact=${contact}`,
+        ),
+        ...unmatched(contacts, signer.contacts).map(
+          (contact) => `--remove-contact=${contact}`,
+        ),
+      ]
+      if (args.length)
+        await registryCli(effects, registry, [
+          'admin',
+          'signer',
+          'edit',
+          id,
+          ...args,
+        ])
+    }
+    if (signer.admin !== current.admins.includes(id)) {
+      await registryCli(effects, registry, [
+        'admin',
+        signer.admin ? 'add' : 'remove',
+        id,
+      ])
+    }
+  }
+
+  const info = await readRegistryInfo(effects, registry)
+  const previousTrust = new Set(Object.keys(info.trustSigners))
+  const trust = new Set(previousTrust)
+  for (const id of Object.keys(current.signers)) trust.delete(id)
+  for (const signer of desired) if (signer.offerForTrust) trust.add(signer.id!)
+  if (
+    trust.size !== previousTrust.size ||
+    [...trust].some((id) => !previousTrust.has(id))
+  ) {
+    await registryCli(effects, registry, [
+      'info',
+      'set-trust-signers',
+      ...trust,
+    ])
+  }
+  for (const id of Object.keys(current.signers)) {
+    if (!seen.has(id))
+      await registryCli(effects, registry, ['admin', 'signer', 'remove', id])
+  }
+}
 
 async function readState(
   effects: T.Effects,
@@ -280,10 +317,7 @@ async function readState(
     (await registryCli(effects, registry, ['admin', 'list', '--format=json']))
       .stdout as string,
   )
-  const info = JSON.parse(
-    (await registryCli(effects, registry, ['info', '--format=json']))
-      .stdout as string,
-  )
+  const info = await readRegistryInfo(effects, registry)
   return stateShape.parse({
     signers,
     admins: Object.keys(admins).sort(),

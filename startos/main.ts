@@ -1,7 +1,11 @@
 import { Daemons } from '@start9labs/start-sdk'
 import { socksHostId, socksPort } from 'tor-startos/startos/utils'
 import { configYaml } from './fileModels/config.yaml'
-import { activeRegistries } from './fileModels/registries.json'
+import {
+  enabledRegistries,
+  registriesJson,
+  publishRegistryName,
+} from './fileModels/registries.json'
 import { i18n } from './i18n'
 import { manifest } from './manifest'
 import { sdk } from './sdk'
@@ -30,7 +34,16 @@ export const main = sdk.setupMain(async ({ effects }) => {
     .const()
 
   return sdk.Daemons.dynamic(effects, async ({ effects }) => {
-    const registries = (await activeRegistries().const(effects)) ?? []
+    const registries =
+      (await registriesJson
+        .read((s) =>
+          enabledRegistries(s.registries).map(({ id, port, pendingName }) => ({
+            id,
+            port,
+            pendingName,
+          })),
+        )
+        .const(effects)) ?? []
     let daemons: Daemons<typeof manifest, string> = sdk.Daemons.of(effects)
     for (const registry of registries) {
       const config = configYaml(registry)
@@ -68,7 +81,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
         exec: { command: ['start-registryd'] },
         uses: hostnames,
         ready: {
-          display: i18n('Web API — ${registry}', { registry: registry.id }),
+          display: i18n('Web API'),
           fn: () =>
             sdk.healthCheck.checkPortListening(effects, registry.port, {
               successMessage: i18n('The web API is ready'),
@@ -76,6 +89,17 @@ export const main = sdk.setupMain(async ({ effects }) => {
             }),
         },
         requires: [],
+      })
+      daemons = daemons.addOneshot(`publish-name-${registry.id}` as never, {
+        subcontainer: null,
+        exec: {
+          fn: async () => {
+            await publishRegistryName(effects, registry.id)
+            return null
+          },
+        },
+        uses: registry.pendingName ?? null,
+        requires: [daemonId as never],
       })
     }
     return daemons

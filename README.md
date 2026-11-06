@@ -38,24 +38,26 @@ Dynamic reconciliation starts, stops, or restarts only affected daemons. Changin
 
 The package persists application data, daemon configuration, and instance inventory separately.
 
-| Volume    | Content                                                                 | Container mount                                         |
-| --------- | ----------------------------------------------------------------------- | ------------------------------------------------------- |
-| `main`    | `default` uses the volume root; other registries use `registries/<id>/` | The selected registry's directory at `/var/lib/startos` |
-| `config`  | `default` uses `config.yaml`; others use `registries/<id>.yaml`         | The selected file at `/etc/startos/config.yaml`         |
-| `startos` | `registries.json`: IDs, internal ports, and enabled state               | Not mounted                                             |
+| Volume    | Content                                                                                 | Container mount                                         |
+| --------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| `main`    | `default` uses the volume root; other registries use `registries/<id>/`                 | The selected registry's directory at `/var/lib/startos` |
+| `config`  | `default` uses `config.yaml`; others use `registries/<id>.yaml`                         | The selected file at `/etc/startos/config.yaml`         |
+| `startos` | `registries.json`: internal IDs, ports, enabled state, cached names, and queued renames | Not mounted                                             |
 
 A registry's store includes hosted assets, index, content-addressed icons, administrator grants, signer records, and trust proposals. The default registry retains the volume root and original network host. No application data is moved during updates.
 
-Removing a registry from the active list retains its data, configuration, port assignment, and host settings. Re-adding its ID reuses those resources. Disabled registry data remains in backups and consumes disk space.
+Disabling or removing a registry retains its data, configuration, port assignment, and host settings. Its named entry remains in Manage Registries; enabling it reuses those resources without exposing its internal ID. Disabled registry data remains in backups and consumes disk space.
 
 ## File Models
 
 The instance inventory is seeded from schema defaults during init; daemon YAML files are seeded and maintained for each active registry. File models preserve unmodeled keys.
 
-| File                                                  | Ownership                                                                                                                    |
-| ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `startos/registries.json`                             | Manage Registries controls enabled IDs; the package allocates stable internal ports and retains disabled entries.            |
-| `config/config.yaml` or `config/registries/<id>.yaml` | Per-registry daemon settings; hostname maintenance runs reactively in init, and main writes the optional outbound Tor proxy. |
+| File                                                  | Ownership                                                                                                                             |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `startos/registries.json`                             | Manage Registries controls names and enabled state; the package generates stable internal IDs and ports and retains disabled entries. |
+| `config/config.yaml` or `config/registries/<id>.yaml` | Per-registry daemon settings; hostname maintenance runs reactively in init, and main writes the optional outbound Tor proxy.          |
+
+Registry names remain in the upstream store. The inventory's `lastKnownName` caches that metadata for stopped or disabled entries; `pendingName` queues a requested name until that daemon is ready. A post-readiness oneshot publishes the name through the CLI, updates the cache, and clears the request. Existing upstream names are cached without being overwritten on upgrade. Name-only changes do not restart the daemon.
 
 The package enforces the listener address and data directory. `registry-hostname` is rebuilt from that registry's enabled non-local interface addresses, never appended. A change restarts only the matching daemon because signed requests are validated against the hostname list read at startup.
 
@@ -86,25 +88,25 @@ Additional registries start empty. They need their own metadata, signers, and ad
 
 ## Actions
 
-Registry-specific actions select an enabled registry. They never apply changes to all registries implicitly.
+Configure Registry and List Packages select an enabled registry by name. Manage Signers exposes all enabled registries as named collapsible sections, with one Save for edits across sections. Internal IDs never appear as editable fields or choice labels.
 
 ### Manage Registries
 
-Use this to change the active instance set. It updates the inventory, interfaces, and dynamic daemon set. Saving an unchanged list is a no-op. Adding an ID creates an independent store; removing one stops its daemon and disables its interface without deleting data. Re-adding the same ID restores that instance rather than creating a fresh store. Renaming an ID is removal plus addition, not a metadata rename.
+Use this to create, rename, enable, or disable registries by name. Names must be nonblank, 1–32 characters, and unique without regard to case. Each new row receives a generated internal ID and stable internal port. Existing IDs remain hidden and unchanged on rename. Disabled entries remain listed so their Enabled toggle restores the same store and addresses. Removing a row disables it rather than purging it; it reappears as disabled on reopening. Stale inventory submissions are rejected before writes.
 
 ### Configure Registry
 
-Use this to change the selected registry's display metadata through its live CLI. Changes take seconds and require no restart. Saving the same values is idempotent. Blank icon or description clears the stored value.
+Use this to change the named registry's display metadata. Name changes are queued for the ready daemon to publish; icon and description changes use its live CLI directly. Changes take seconds and require no restart. Saving the same values is idempotent. Blank icon or description clears the stored value.
 
 ### Manage Signers
 
-The form pre-fills one editable list with every signer on the selected registry, including labels, contacts, public keys, Admin, and Offer for Trust. The standard list controls create or remove entries; there is no operation selector or separate add form. Saving reconciles the list through the selected daemon's CLI. An unchanged list performs no writes and needs no restart.
+The form presents one collapsible object per enabled registry, titled with its name rather than its internal ID. Each section pre-fills that registry's signer list, including labels, contacts, public keys, Admin, and Offer for Trust. Expand multiple sections to edit their lists in one submission. Standard list controls create or remove entries; there is no registry selector, operation selector, or separate add form. Saving reconciles each list through its own daemon's CLI. An unchanged list performs no writes and needs no restart.
 
 Admin and Offer for Trust are independent: an administrator need not be offered to clients, and a proposed signer need not administer the registry. Signer removal drops its authorizations; revoking Admin retains the signer and its other authorizations. Trust proposals are maintained as a complete selected-ID set, preserving unrelated signers.
 
 No private key is accepted or stored. New entries accept PEM public keys and complete armored GPG public exports, retaining certificate identities and fingerprints. Upstream imports supported Ed25519 signing keys, not arbitrary RSA or ECDSA keys. Existing public keys cannot be replaced by this action; key rotation uses the upstream CLI. StartOS 0.4.1.2 still allows editing the key field, but saving a changed existing key is rejected before any writes. Editing labels, contacts, and permission flags preserves signer IDs, keys, and package authorizations. Removing a list entry deletes that signer's authorizations.
 
-Switching registries loads that registry's prefilled list. A stale form is rejected before any writes if signer records, administrator membership, or trust selection changed after opening it. CLI updates are not transactional: after a command failure, reopen the form to inspect any completed changes before retrying.
+Every enabled registry's list is loaded when the form opens, including collapsed sections. Before writing to any registry, the handler validates all sections and rejects changes to the enabled registry set, signer records, administrator membership, or trust selection since form open. A malformed or stale later section cannot partially save an earlier one. Subsequent CLI commands across registries are not transactional: after a command failure, reopen the form to inspect completed changes before retrying.
 
 Trust selection uses upstream's full-set replacement API. The action rereads the selected set before changing membership; simultaneous external edits can still overwrite one another.
 
