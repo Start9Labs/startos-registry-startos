@@ -1,6 +1,7 @@
 export const DEFAULT_LANG = 'en_US'
 
 const dict = {
+  'Could not resolve the imported GPG signing keys. Reopen the action and try again.': 96,
   '${registry}: ${message}': 91,
   '${registry} / ${signer}: ${message}': 92,
   'Signer row ${position}': 93,
@@ -37,11 +38,10 @@ const dict = {
   Signers: 69,
   Contacts: 70,
   'On submission, removing a signer deletes its authorizations from this section’s registry. Unchecking Admin keeps the signer. All registry sections are submitted together.': 71,
-  'New signers require PEM public keys or complete armored GPG public-key exports for supported Ed25519 signing keys. Leave existing key text unchanged. Never enter private keys.': 72,
+  'Add or replace active signing keys with PEM public keys or complete armored GPG exports for supported Ed25519 keys. New signers need a key. Clearing an existing signer’s keys revokes its access without deleting its permissions. Never enter private keys.': 72,
   'Edit signers, administrator rights, and trust offers across enabled registries.': 73,
   'Signers changed while this form was open. Reopen it and try again.': 74,
   'Each existing signer must appear only once per registry section.': 75,
-  'Existing signing keys cannot be changed here. Use the registry CLI to rotate keys.': 76,
   'Remove empty contact rows or enter an email address, Matrix username, or contact URL.': 77,
   'Enter an email address, Matrix username, or contact URL.': 78,
   'Each new signer needs at least one public key.': 79,

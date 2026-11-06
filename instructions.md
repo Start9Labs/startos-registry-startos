@@ -37,7 +37,7 @@ If no registries are enabled, use **Manage Registries** to enable or restore one
 - **Offer for Trust** includes the signer's public keys in that registry's trust offer to clients. It does not grant administrator rights.
 - Removing a signer deletes its authorizations in that registry when you submit. It does not remove the same key from another registry. You can still add administrators through this StartOS action after revoking the last administrator.
 
-Existing public-key text must remain unchanged; use the upstream CLI for key rotation. Private signing keys stay with their owners.
+Edit **Public Keys** to add or replace an existing signer's active keys without recreating the signer or losing its permissions. The submitted field defines its active key set. Clearing an existing signer's field revokes all of its active keys while keeping its record and permissions; a new signer still needs at least one key. Upstream may retain older GPG certificate records, but the form shows active signing keys. Private signing keys stay with their owners.
 
 The action checks form values and stale signer state across all sections before starting updates. Once CLI commands begin, an error—including rejection of a new key by the registry—can leave earlier changes applied. Reopen the action to inspect the current lists before retrying.
 
