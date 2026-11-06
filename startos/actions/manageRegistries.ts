@@ -18,7 +18,7 @@ export const manageRegistries = sdk.Action.withInput(
   async () => ({
     name: i18n('Manage Registries'),
     description: i18n(
-      'Add or remove independent registries, each with its own addresses and signers.',
+      'Create, name, enable, or disable independent registries.',
     ),
     warning: null,
     allowedStatuses: 'any',
@@ -47,7 +47,7 @@ export const manageRegistries = sdk.Action.withInput(
             // SDK 4.0.0 types object-list defaults as []; the renderer accepts entries.
             default: defaults as [],
             description: i18n(
-              'Name each registry and choose whether it is enabled. Disabled or removed entries retain their data and addresses and remain listed here for restoration.',
+              'Changes apply on submission. Disabling a registry stops it and hides its interface without deleting data. Removing a row also disables it; the retained entry reappears when this action is reopened. Enable an entry to restore it.',
             ),
           },
           {

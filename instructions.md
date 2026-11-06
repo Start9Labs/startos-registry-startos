@@ -2,51 +2,59 @@
 
 ## Documentation
 
-- [start-cli registry reference](https://docs.start9.com/start-os/cli-reference.html) — manage packages, categories, mirrors, and OS versions from the command line.
+- [start-cli registry reference](https://docs.start9.com/start-os/cli-reference.html) — commands for package catalogs, signers, mirrors, and OS versions.
 
 ## What you get on StartOS
 
-- Independent registries, each with its own **Web API**, packages, signers, and address settings.
-- **Manage Registries** to add or disable registries, and **Manage Signers** to control signer permissions and trust offers.
-- No browser administration UI: publish and curate packages from your workstation with `start-cli`.
+- Independent registries with separate **Web API** addresses, package catalogs, signers, and permissions.
+- **Manage Registries** for names and enabled state, **Configure Registry** for a selected registry's icon and description, and **Manage Signers** for signer access across enabled registries.
+- Publish and curate package catalogs from a workstation with `start-cli`; the service does not expose a separate registry web application.
 
 ## Getting set up
 
-1. Use **Manage Registries** to name your initial registry. Optionally choose it in **Configure Registry** to set an icon and description.
-2. Open **Manage Signers** and expand the section bearing your registry's name. Use its **Signers** list to enter your first signer, with a label, contacts, and public key. For a StartOS identity, `start-cli pubkey` prints the PEM public key on their workstation. You can also paste an armored GPG public-key export. Never paste a private key.
-3. Check **Admin** to let this signer administer the registry. Check **Offer for Trust** only if you want connecting StartOS servers to be offered this signer's keys.
-4. Use the registry's **Web API** address when publishing from your workstation or subscribing another StartOS server.
+1. Open **Manage Registries**, name the initial entry, and leave **Enabled** checked. You can optionally choose that name in **Configure Registry** to set its icon and description.
+2. Open **Manage Signers** and expand the section bearing that registry's name. Add a signer using its **Signers** list. Give the signer a label and public keys; contacts are optional. On the signer's workstation, `start-cli pubkey` prints the public identity key. If that workstation has no identity key, create one with `start-cli init-key` first. You can instead use a complete armored GPG public-key export containing supported Ed25519 signing keys. Never paste private keys.
+3. Check **Admin** for the signer that will administer the initial registry. **Offer for Trust** is independent: enable it only when you want clients of that registry to receive the signer's keys as a trust offer. Submit the form.
+4. Set addresses on the registry's **Web API — <name>** interface. Use an address listed there when publishing packages or adding this registry as a source on another StartOS server.
 
-## Multiple registries
+## Adding, naming, and restoring registries
 
-1. Open **Manage Registries**, add a registry, enter a unique name, and leave **Enabled** checked.
-2. Choose that name in **Configure Registry** for its icon and description. Expand its named section in **Manage Signers** to set its independent signers and permissions.
+1. Open **Manage Registries**, add an entry, enter a unique name, and leave **Enabled** checked. Submit to create it.
+2. Choose its name in **Configure Registry** for its icon and description. Expand its named section in **Manage Signers** to set its own signers and permissions; these are not copied from another registry.
 3. Set addresses on its **Web API — <name>** interface. Different registries can use different domains.
 
-Names are changed only in **Manage Registries**, without replacing the registry or its addresses. IDs are managed internally. Names queued while a registry is stopped or disabled are applied when it runs again.
+Change names only in **Manage Registries**. Renaming does not replace a registry or its addresses, and you never need to enter an ID. Names queued while a registry is stopped or disabled apply when it runs again.
 
-Uncheck **Enabled** in **Manage Registries** to stop a registry and hide its interface while keeping its packages, signers, and address settings. Its named entry remains listed; check **Enabled** to restore it. Removing a row also disables it, and the retained entry reappears when you reopen the action. Retained registries still consume disk space and are included in backups.
+To stop a registry without deleting its data, uncheck **Enabled** and submit. Its named entry remains listed; check **Enabled** and submit to restore the same packages, signers, and address settings. Removing a row also disables the registry rather than deleting it, so that retained entry reappears when you reopen the action. Disabled registries still consume disk space and are included in backups.
+
+If no registries are enabled, use **Manage Registries** to enable or restore one before configuring metadata, managing signers, or listing packages.
 
 ## Managing signers
 
-**Manage Signers** shows a collapsible section for each enabled registry, labeled by name. Each section contains that registry's editable signer list. Expand several sections to edit labels, contacts, and permissions across registries before submitting once. The built-in list controls create or remove signer entries; submitting applies every section. **Admin** and **Offer for Trust** are separate choices:
+**Manage Signers** has a collapsible section for each enabled registry. Expand several sections to edit labels, optional contacts, and permissions before submitting once. The built-in list controls add or remove entries. **Submit applies every section**, including lists that are collapsed.
 
-- **Admin** grants registry administration. Unchecking it revokes administration without deleting the signer.
-- **Offer for Trust** includes the signer's public keys in the trust proposal clients receive from this registry. It does not grant administrator rights.
-- Removing a signer also removes its authorizations. You can still use this StartOS action to add an administrator if you remove the last one.
+- **Admin** grants administration rights only in that signer's registry section. Unchecking it keeps the signer and its other authorizations.
+- **Offer for Trust** includes the signer's public keys in that registry's trust offer to clients. It does not grant administrator rights.
+- Removing a signer deletes its authorizations in that registry when you submit. It does not remove the same key from another registry. You can still add administrators through this StartOS action after revoking the last administrator.
 
-If any registry's signers changed while the form was open, reopen it before saving. Validation happens for every section before changes begin. A later CLI failure can still leave earlier changes applied; reopen the action to inspect them before retrying.
+Existing public-key text must remain unchanged; use the upstream CLI for key rotation. Private signing keys stay with their owners.
 
-The matching private keys stay with their owners. GPG public exports retain their identities and fingerprints and must contain supported Ed25519 signing keys. Leave existing public keys unchanged; use the upstream CLI to rotate them. Changing an existing key causes a save error.
+The action checks form values and stale signer state across all sections before starting updates. Once CLI commands begin, an error—including rejection of a new key by the registry—can leave earlier changes applied. Reopen the action to inspect the current lists before retrying.
+
+## Icons and descriptions
+
+**Configure Registry** changes only the selected registry's icon and description. Use a base64 image data URL or an HTTP(S) URL for the icon. Leave either field blank to clear it. Description text supports Markdown and appears above that registry's packages in the marketplace.
 
 ## Publishing and subscribing
 
-From a workstation holding an authorized private key, point `start-cli` at the chosen registry's Web API address and use the `start-cli registry` commands. Use an address listed on that registry's interface: authenticated requests are signed for their destination hostname. Changing one registry's addresses briefly restarts that registry, not the others.
+Use `--registry` to select the registry's **Web API** address for CLI commands:
 
-To use the packages on another StartOS server, add the chosen Web API address as a registry source. **List Packages** gives you a count and alphabetical list of the selected registry's package names.
+```bash
+start-cli --registry '<registry-web-api-address>' registry info
+```
 
-If you use a separate reverse proxy, forward the RPC, WebSocket, download, and `/icons/` routes. If you publish through a tunnel to keep your home IP private, send outbound traffic through that tunnel too; remote registries and sites the registry fetches from can otherwise see your home IP.
+Use the `start-cli registry` commands for package publishing and curation. Publishing and administration require a signer with the appropriate permissions in that registry and its matching private key. For a GPG identity, select its signing key with `--id-key-gpg '<key fingerprint>'`. Otherwise use the identity whose public key you registered. Use an address listed on the chosen interface: authenticated requests are signed for that destination hostname. Changing one registry's addresses briefly restarts that registry, not the others.
 
-## Display
+To subscribe another StartOS server, add the chosen Web API address as a registry source. **List Packages** selects an enabled registry and returns its name, package count, and alphabetical package titles. A result with count zero identifies the selected registry and says its catalog is empty.
 
-**Configure Registry** lets you choose a registry by name and change its icon and markdown description. Leave the icon or description blank to clear it.
+If you use a separate reverse proxy, forward the registry's entire API origin, including RPC, WebSocket, icon, and download traffic. If you publish through a tunnel to keep your home IP private, send outbound traffic through that tunnel too; remote registries and sites the service fetches from can otherwise see your home IP.

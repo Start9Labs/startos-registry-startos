@@ -57,7 +57,7 @@ The instance inventory is seeded from schema defaults during init; daemon YAML f
 | `startos/registries.json`                             | Manage Registries controls names and enabled state; the package generates stable internal IDs and ports and retains disabled entries. |
 | `config/config.yaml` or `config/registries/<id>.yaml` | Per-registry daemon settings; hostname maintenance runs reactively in init, and main writes the optional outbound Tor proxy.          |
 
-Registry names remain in the upstream store. The inventory's `lastKnownName` caches that metadata for stopped or disabled entries; `pendingName` queues a requested name until that daemon is ready. A post-readiness oneshot publishes the name through the CLI, updates the cache, and clears the request. Existing upstream names are cached without being overwritten on upgrade. Name-only changes do not restart the daemon.
+Registry names remain in the upstream store. Manage Registries uses the inventory's `lastKnownName` cache so it also works while registries are stopped or disabled; `pendingName` queues a requested name until that daemon is ready. A name changed outside these actions through the upstream CLI is not reflected in that cache until the registry next starts; CLI-backed selectors read live metadata. A post-readiness oneshot publishes the name through the CLI, updates the cache, and clears the request. Existing upstream names are cached without being overwritten on upgrade. Name-only changes do not restart the daemon.
 
 The package enforces the listener address and data directory. `registry-hostname` is rebuilt from that registry's enabled non-local interface addresses, never appended. A change restarts only the matching daemon because signed requests are validated against the hostname list read at startup.
 
@@ -71,7 +71,7 @@ None declared. The package imports Tor's bridge constants for optional outbound 
 
 ## Network Access and Interfaces
 
-Each active registry has an independent HTTP API interface on its own MultiHost. Distinct hosts allow separate domains and address choices.
+Each active registry has an independent API interface on its own MultiHost. The daemon listens for HTTP internally; clients use the configured interface address, which may use TLS. Distinct hosts allow separate domains and address choices.
 
 | Registry  | Host ID         | Interface ID    | Internal port                                                  |
 | --------- | --------------- | --------------- | -------------------------------------------------------------- |
@@ -82,13 +82,13 @@ The interfaces serve registry RPC, assets, icons, and WebSocket routes. They are
 
 ## Installation and First-Run Flow
 
-A fresh install seeds and starts `default`. No credentials or private keys are generated. Two non-blocking tasks prompt for a registry name and an administrator.
+A fresh install seeds and starts `default`. Signer private keys remain with their owners; local StartOS actions authenticate through the shared administrative cookie created by the daemons. Two non-blocking tasks prompt for the initial registry's name and signer/administrator setup.
 
-Additional registries start empty. They need their own metadata, signers, and address setup; enabling one does not clone another's store. CLI-backed forms query live registries and therefore require their daemons to be available.
+Additional registries start with empty catalogs and no signers. Their names are supplied on creation, and icon/description configuration is optional. Each needs its own signer permissions and address setup; enabling one does not clone another's store. CLI-backed forms query live registries and therefore require their daemons to be available.
 
 ## Actions
 
-Configure Registry and List Packages select an enabled registry by name. Manage Signers exposes all enabled registries as named collapsible sections, with one Save for edits across sections. Internal IDs never appear as editable fields or choice labels.
+Configure Registry and List Packages select an enabled registry by name. Manage Signers exposes all enabled registries as named collapsible sections, with one submission for edits across sections. Internal IDs never appear as editable fields or choice labels.
 
 ### Manage Registries
 
@@ -96,7 +96,7 @@ Use this to create, rename, enable, or disable registries by name. Names must be
 
 ### Configure Registry
 
-Use this only to change the selected registry's icon and description through its live CLI. Registry naming belongs exclusively to Manage Registries; this form has no name field and cannot queue renames. Changes take seconds and require no restart. Saving the same values is idempotent. Blank icon or description clears the stored value.
+Use this only to change the selected registry's icon and description through its live CLI. Registry naming belongs exclusively to Manage Registries; this form has no name field and cannot queue renames. Changes take seconds and require no restart. Saving the same values is idempotent. An empty icon or empty/whitespace-only description clears that stored field. An unchanged description editor preserves its other language variants; changing or clearing it replaces the complete description.
 
 ### Manage Signers
 
@@ -104,25 +104,25 @@ The form presents one collapsible object per enabled registry, titled with its n
 
 Admin and Offer for Trust are independent: an administrator need not be offered to clients, and a proposed signer need not administer the registry. Signer removal drops its authorizations; revoking Admin retains the signer and its other authorizations. Trust proposals are maintained as a complete selected-ID set, preserving unrelated signers.
 
-No private key is accepted or stored. New entries accept PEM public keys and complete armored GPG public exports, retaining certificate identities and fingerprints. Upstream imports supported Ed25519 signing keys, not arbitrary RSA or ECDSA keys. Existing public keys cannot be replaced by this action; key rotation uses the upstream CLI. StartOS 0.4.1.2 still allows editing the key field, but saving a changed existing key is rejected before any writes. Editing labels, contacts, and permission flags preserves signer IDs, keys, and package authorizations. Removing a list entry deletes that signer's authorizations.
+Supply public keys only; private signing keys stay with their owners. New entries accept PEM public keys and complete armored GPG public exports, retaining certificate identities and fingerprints. Upstream imports supported Ed25519 signing keys, not arbitrary RSA or ECDSA keys. Existing public keys cannot be replaced by this action; key rotation uses the upstream CLI. The handler rejects changes to existing public-key text before any writes, even if the form allows editing it. Editing labels, contacts, and permission flags preserves signer IDs, keys, and package authorizations. Removing a list entry deletes that signer's authorizations.
 
-Every enabled registry's list is loaded when the form opens, including collapsed sections. Before writing to any registry, the handler validates all sections and rejects changes to the enabled registry set, signer records, administrator membership, or trust selection since form open. A malformed or stale later section cannot partially save an earlier one. Subsequent CLI commands across registries are not transactional: after a command failure, reopen the form to inspect completed changes before retrying.
+Every enabled registry's list is loaded when the form opens, including collapsed sections. Before writing to any registry, the handler checks form values in all sections and rejects changes to the enabled registry set, signer records, administrator membership, or trust selection since form open. Field-validation and stale-snapshot failures cannot partially save an earlier section. Subsequent CLI commands are not transactional: upstream rejection of a new key or another command failure can occur after earlier updates were applied. Reopen the form to inspect current state before retrying.
 
 Trust selection uses upstream's full-set replacement API. The action rereads the selected set before changing membership; simultaneous external edits can still overwrite one another.
 
 ### List Packages
 
-Use this for a read-only overview of one registry's hosted packages. It returns alphabetically sorted titles, one per package at its newest version, and a count. Entries with no versions are omitted. Reads scale with the index; versions, architectures, categories, and signatures are not included in this summary.
+Use this for a read-only overview of a selected registry's catalog. Both empty and populated results identify the registry by the name shown in the opened selection form, including any duplicate-name display suffix, and include a count. It returns alphabetically sorted titles, one per package at its newest version, rather than package IDs. Entries with no versions are omitted. Reads scale with the index; versions, architectures, categories, and signatures are not included in this summary.
 
 ## Tasks
 
-Fresh installs raise two `important` tasks: Manage Registries to name the initial registry, and Manage Signers. Running the corresponding action clears each prompt. These prompts do not block startup and are not re-created on restore or rebuild. Additional registries are configured through the same actions without separate install tasks. Upgrade migration retires the old Configure Registry prompt without creating a replacement on upgrade.
+Fresh installs raise two `important` tasks: Manage Registries to name the initial registry, and Manage Signers. A successful submission of the corresponding action clears its prompt; this records completion of the action, not enforcement of a custom name or an administrator grant. These prompts do not block startup and are not re-created on restore or rebuild. Additional registries are configured through the same actions without separate install tasks. Upgrade migration retires the old Configure Registry prompt without creating a replacement on upgrade.
 
 ## Health Checks
 
-Each daemon probes its own internal TCP port. The default registry retains the `primary` health-check ID; others use `registry-<id>`. A failure means that registry did not bind its API listener; inspect its `registry-<id>` logs for rejected configuration or store errors. Another registry being healthy cannot satisfy this check.
+Each daemon probes its own internal TCP port. Status messages identify the registry by its current cached or pending name and report only whether that internal port is listening, not external reachability. Name changes are read on the next health-check poll without restarting the daemon. The default registry retains the `primary` health-check ID; others use `registry-<id>`. A failure means that registry did not bind its API listener; inspect its `registry-<id>` logs for rejected configuration or store errors. Another registry being healthy cannot satisfy this check.
 
-A CLI action failing while its API port is healthy points instead at local-cookie authentication or CLI arguments. A daemon starting rotates the shared cookie; retry a management action that overlaps that rotation. All enabled daemons must be available for forms that read live state across registries.
+Inspect the action's error before retrying; a listening port does not establish valid input, authentication, or successful backend operations. A daemon starting rotates the shared cookie; retry a management action that overlaps that rotation. All enabled daemons must be available for forms that read live state across registries.
 
 ## Backups and Restore
 
@@ -133,8 +133,8 @@ Restore brings back the same active registry set. Init derives each hostname lis
 ## Limitations and Differences
 
 1. Registry removal is non-destructive; there is no action to purge retained data.
-2. CLI-backed configuration forms require the enabled registry daemons to be available.
-3. There is no browser administration UI. Package curation and publishing use an external CLI and the publisher's private key.
+2. CLI-backed forms require enabled registry daemons to be available. With no enabled registries they direct the caller to Manage Registries; enabling a retained entry restores the same store. When only one registry is enabled, Configure Registry and List Packages preselect it.
+3. No separate registry web application is exposed. StartOS actions manage registry settings and signers; publishing and curation use an external CLI and the publisher's private key.
 4. Categories and other upstream curation settings are not exposed by Configure Registry.
 5. Administrator grants and trust proposals are separate decisions. Offering a key does not grant publishing or administrator authority.
 6. The package's local loopback-HTTP actions remain available without an administrator key, including recovery after the last admin grant is removed.

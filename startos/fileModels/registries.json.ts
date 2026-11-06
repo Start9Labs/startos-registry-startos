@@ -11,6 +11,7 @@ import {
   registryDisplayName,
   readRegistryInfo,
   registryCli,
+  registrySelectionDescription,
 } from '../utils'
 
 const registryShape = z.looseObject({
@@ -49,8 +50,16 @@ export function activeRegistries() {
 }
 
 export async function namedRegistries(effects: T.Effects) {
+  const active = (await activeRegistries().once()) ?? []
+  if (!active.length) {
+    throw new Error(
+      i18n(
+        'No registries are enabled. Open Manage Registries and enable a registry before using this action.',
+      ),
+    )
+  }
   const registries = await Promise.all(
-    ((await activeRegistries().once()) ?? []).map(async (registry) => ({
+    active.map(async (registry) => ({
       ...registry,
       name: registryDisplayName(
         registry,
@@ -111,13 +120,15 @@ export async function publishRegistryName(effects: T.Effects, id: string) {
   )
 }
 
-export const registrySelect = sdk.Value.dynamicSelect(async ({ effects }) => ({
-  name: i18n('Registry'),
-  default: null,
-  values: Object.fromEntries(
-    (await namedRegistries(effects)).map((r) => [r.id, r.name]),
-  ),
-}))
+export const registrySelect = sdk.Value.dynamicSelect(async ({ effects }) => {
+  const registries = await namedRegistries(effects)
+  return {
+    name: i18n('Registry'),
+    description: registrySelectionDescription(),
+    default: registries.length === 1 ? registries[0].id : null,
+    values: Object.fromEntries(registries.map((r) => [r.id, r.name])),
+  }
+})
 
 export function registryInput<Type extends Record<string, unknown>>(
   build: (
@@ -141,6 +152,7 @@ export function registryInput<Type extends Record<string, unknown>>(
       )
       return {
         name: i18n('Registry'),
+        description: registrySelectionDescription(),
         default: registries.length === 1 ? registries[0].id : null,
         disabled: false,
         variants: sdk.Variants.of(variants),
@@ -154,7 +166,7 @@ export async function selectedRegistry(id: string) {
   if (!registry)
     throw new Error(
       i18n(
-        'This registry is no longer enabled. Reopen the action and try again.',
+        'The selected registry is no longer enabled. Reopen the action and choose an enabled registry.',
       ),
     )
   return registry

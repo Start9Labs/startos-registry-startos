@@ -45,7 +45,7 @@ export function assertUniqueRegistryNames(names: string[]) {
     if (seen.has(key))
       throw new Error(
         i18n(
-          'Registry names must be unique. Enable the existing entry to restore a registry.',
+          'Registry names must be unique, including disabled entries. Enable a disabled entry to restore it.',
         ),
       )
     seen.add(key)
@@ -72,6 +72,12 @@ export function registryDisplayName(registry: Registry, name?: string | null) {
       registry.pendingName ??
       (name === undefined ? registry.lastKnownName : name)
     )?.trim() || i18n('Unnamed Registry')
+  )
+}
+
+export function registrySelectionDescription() {
+  return i18n(
+    'Choose an enabled registry. Enable or restore registries in Manage Registries.',
   )
 }
 

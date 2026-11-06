@@ -14,6 +14,7 @@ import {
   mountpoint,
   registryConfigPath,
   registryDataPath,
+  registryDisplayName,
 } from './utils'
 
 export const main = sdk.setupMain(async ({ effects }) => {
@@ -82,11 +83,22 @@ export const main = sdk.setupMain(async ({ effects }) => {
         uses: hostnames,
         ready: {
           display: i18n('Web API'),
-          fn: () =>
-            sdk.healthCheck.checkPortListening(effects, registry.port, {
-              successMessage: i18n('The web API is ready'),
-              errorMessage: i18n('The API is unreachable'),
-            }),
+          fn: async () => {
+            const current = await registriesJson
+              .read((s) =>
+                s.registries.find((entry) => entry.id === registry.id),
+              )
+              .once()
+            const name = registryDisplayName(current ?? registry)
+            return sdk.healthCheck.checkPortListening(effects, registry.port, {
+              successMessage: i18n('API port listening — ${registry}', {
+                registry: name,
+              }),
+              errorMessage: i18n('API port not listening — ${registry}', {
+                registry: name,
+              }),
+            })
+          },
         },
         requires: [],
       })

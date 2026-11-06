@@ -70,7 +70,7 @@ function signersSpec(snapshot: State) {
           // SDK 4.0.0 types object-list defaults as []; the renderer accepts entries.
           default: defaults as [],
           description: i18n(
-            'Removing a signer from this list deletes all its authorizations. Local StartOS actions can restore an administrator.',
+            'On submission, removing a signer deletes its authorizations from this section’s registry. Unchecking Admin keeps the signer. All registry sections are submitted together.',
           ),
         },
         {
@@ -88,16 +88,16 @@ function signersSpec(snapshot: State) {
                 {
                   name: i18n('Contacts'),
                   description: i18n(
-                    'Enter an email address, Matrix username, or contact URL.',
+                    'Optional email addresses, Matrix usernames, or contact URLs.',
                   ),
                 },
                 { minLength: 1 },
               ),
             ),
             key: Value.textarea({
-              name: i18n('Public Key'),
+              name: i18n('Public Keys'),
               description: i18n(
-                'Paste PEM public keys or complete armored GPG public-key exports. Required for new signers; existing keys must remain unchanged. Never enter a private key.',
+                'New signers require PEM public keys or complete armored GPG public-key exports for supported Ed25519 signing keys. Leave existing key text unchanged. Never enter private keys.',
               ),
               required: false,
               default: null,
@@ -112,14 +112,14 @@ function signersSpec(snapshot: State) {
             admin: Value.toggle({
               name: i18n('Admin'),
               description: i18n(
-                'Grant permission to administer this registry.',
+                'Allow this signer to administer this section’s registry.',
               ),
               default: false,
             }),
             offerForTrust: Value.toggle({
               name: i18n('Offer for Trust'),
               description: i18n(
-                'Offer this signer’s public keys to connecting StartOS servers. This does not grant administrator rights.',
+                'Offer this signer’s public keys to clients of this section’s registry. This does not grant administrator rights.',
               ),
               default: false,
             }),
@@ -135,7 +135,7 @@ export const manageSigners = sdk.Action.withInput(
   async () => ({
     name: i18n('Manage Signers'),
     description: i18n(
-      'Edit signer information, administrator rights, and trust offers.',
+      'Edit signers, administrator rights, and trust offers across enabled registries.',
     ),
     warning: null,
     allowedStatuses: 'only-running',
@@ -197,12 +197,16 @@ function prepareSigners(
   const seen = new Set<string>()
   const desired = signers.map((signer) => {
     const name = signer.name.trim()
-    if (!name) throw new Error(i18n('A label is required.'))
+    if (!name) throw new Error(i18n('Every signer needs a nonblank label.'))
     if (signer.id !== null) {
       if (!Object.hasOwn(current.signers, signer.id))
         throw new Error(changedError)
       if (seen.has(signer.id))
-        throw new Error(i18n('Each existing signer must appear only once.'))
+        throw new Error(
+          i18n(
+            'Each existing signer must appear only once per registry section.',
+          ),
+        )
       seen.add(signer.id)
       if (
         (signer.key ?? '').trim() !==
@@ -333,7 +337,12 @@ function contactToUrl(contact: z.infer<typeof contactShape>) {
 
 function normalizeContact(value: string) {
   const contact = value.trim()
-  if (!contact) throw new Error(i18n('A contact cannot be blank.'))
+  if (!contact)
+    throw new Error(
+      i18n(
+        'Remove empty contact rows or enter an email address, Matrix username, or contact URL.',
+      ),
+    )
   const url = contact.startsWith('@')
     ? `https://matrix.to/#/${contact}`
     : /^[^\s@]+@[^\s@]+$/.test(contact) && !contact.includes(':')
@@ -366,7 +375,7 @@ function parsePublicKeys(value: string) {
   const pattern = new RegExp(keyBlockPattern, 'g')
   const keys = [...value.matchAll(pattern)].map((match) => match[0])
   if (!keys.length)
-    throw new Error(i18n('A public key is required for each new signer.'))
+    throw new Error(i18n('Each new signer needs at least one public key.'))
   if (value.replace(pattern, '').trim()) throw new Error(publicKeyError)
   return keys
 }

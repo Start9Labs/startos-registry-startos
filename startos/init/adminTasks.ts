@@ -6,9 +6,11 @@ import { sdk } from '../sdk'
 export const adminTasks = sdk.setupOnInit(async (effects, kind) => {
   if (kind !== 'install') return
   await sdk.action.createOwnTask(effects, manageRegistries, 'important', {
-    reason: i18n('Name your registry'),
+    reason: i18n('Name the initial registry.'),
   })
   await sdk.action.createOwnTask(effects, manageSigners, 'important', {
-    reason: i18n('Add an administrator to your registry'),
+    reason: i18n(
+      'Set up signers and administrator rights for enabled registries.',
+    ),
   })
 })

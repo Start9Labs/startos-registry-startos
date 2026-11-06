@@ -12,7 +12,7 @@ export const config = sdk.Action.withInput(
   // metadata
   async () => ({
     name: i18n('Configure Registry'),
-    description: i18n('Set the icon and description of your registry'),
+    description: i18n('Set the icon and description of a selected registry.'),
     warning: null,
     allowedStatuses: 'only-running',
     group: null,
@@ -26,13 +26,16 @@ export const config = sdk.Action.withInput(
         name: i18n('Registry Icon'),
         default: info.icon,
         required: false,
-        placeholder: 'data:image/png;base64,abc123',
+        description: i18n(
+          'Use a base64 image data URL or an HTTP(S) URL. Leave blank to clear the selected registry’s icon.',
+        ),
+        placeholder: 'https://example.org/registry-icon.png',
         patterns: [
           {
             regex:
               '^(data:image/[a-z0-9][a-z0-9.+-]*;base64,[a-zA-Z0-9+/]*={0,2}|https?://.+)$',
             description: i18n(
-              'Must be a valid data URL or http(s) URL (e.g. data:image/png;base64,abc123... or https://example.com/icon.png)',
+              'Enter a base64 image data URL or an HTTP(S) URL.',
             ),
           },
         ],
@@ -40,7 +43,7 @@ export const config = sdk.Action.withInput(
       description: Value.textarea({
         name: i18n('Registry Description'),
         description: i18n(
-          'Shown above your services in the marketplace. Markdown is supported.',
+          'Shown above the selected registry’s packages in the marketplace. Markdown is supported.',
         ),
         default: descriptionText(info.description),
         required: false,
@@ -57,17 +60,18 @@ export const config = sdk.Action.withInput(
   async ({ effects, input }) => {
     const registry = await selectedRegistry(input.registry.selection)
     const { icon, description } = input.registry.value
+    const nextDescription = description?.trim() ? description : null
     const info = await readRegistryInfo(effects, registry)
     await registryCli(effects, registry, [
       'info',
       'set-icon',
       ...(icon ? ['--', icon] : ['--clear']),
     ])
-    if ((description || null) !== descriptionText(info.description)) {
+    if (nextDescription !== descriptionText(info.description)) {
       await registryCli(effects, registry, [
         'info',
         'set-description',
-        ...(description ? ['--', description] : ['--clear']),
+        ...(nextDescription ? ['--', nextDescription] : ['--clear']),
       ])
     }
   },

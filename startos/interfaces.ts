@@ -22,7 +22,9 @@ export const setInterfaces = sdk.setupInterfaces(async ({ effects }) => {
             registry: registryDisplayName(registry),
           }),
           id: registryInterfaceId(registry.id),
-          description: i18n('The web API of your custom registry.'),
+          description: i18n(
+            'Use this API address with start-cli to publish packages or add it as a registry source on another StartOS server.',
+          ),
           type: 'api',
           masked: false,
           schemeOverride: null,

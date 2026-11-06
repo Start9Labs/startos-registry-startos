@@ -1,4 +1,4 @@
-import { ExtendedVersion } from '@start9labs/start-sdk'
+import { ExtendedVersion, T } from '@start9labs/start-sdk'
 import { i18n } from '../i18n'
 import { sdk } from '../sdk'
 import { registryCli } from '../utils'
@@ -14,9 +14,11 @@ export const listPackages = sdk.Action.withInput(
   'list-packages',
 
   // metadata
-  async ({ effects }) => ({
+  async () => ({
     name: i18n('List Packages'),
-    description: i18n('Show the names of the packages hosted on this registry'),
+    description: i18n(
+      'List package titles and a count for a selected registry.',
+    ),
     warning: null,
     allowedStatuses: 'only-running',
     group: null,
@@ -27,8 +29,11 @@ export const listPackages = sdk.Action.withInput(
   async () => null,
 
   // the execution function
-  async ({ effects, input }) => {
+  async ({ effects, input, spec }) => {
     const registry = await selectedRegistry(input.registry)
+    const name = (spec.registry as T.inputSpecTypes.ValueSpecSelect).values[
+      input.registry
+    ]
     const { packages }: PackageIndex = JSON.parse(
       (
         await registryCli(effects, registry, [
@@ -44,18 +49,22 @@ export const listPackages = sdk.Action.withInput(
       .filter((title): title is string => title !== null)
       .sort((a, b) => a.localeCompare(b))
 
+    const title = i18n('Packages in ${registry}: ${count}', {
+      registry: name,
+      count: titles.length,
+    })
     if (!titles.length) {
       return {
         version: '1',
-        title: i18n('Hosted Packages'),
-        message: i18n('No packages are hosted on this registry yet.'),
+        title,
+        message: i18n('The selected registry’s catalog is empty.'),
         result: null,
       }
     }
 
     return {
       version: '1',
-      title: i18n('Packages hosted: ${count}', { count: titles.length }),
+      title,
       message: null,
       result: {
         type: 'multiline',

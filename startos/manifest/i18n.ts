@@ -1,20 +1,20 @@
 export const short = {
-  en_US: 'Host your own StartOS registry',
-  es_ES: 'Aloja tu propio registro de StartOS',
-  de_DE: 'Betreibe deine eigene StartOS-Registry',
-  pl_PL: 'Hostuj własny rejestr StartOS',
-  fr_FR: 'Hébergez votre propre registre StartOS',
+  en_US: 'Host independent StartOS package registries',
+  es_ES: 'Aloja registros de paquetes StartOS independientes',
+  de_DE: 'Unabhängige StartOS-Paketregistries betreiben',
+  pl_PL: 'Hostuj niezależne rejestry pakietów StartOS',
+  fr_FR: 'Hébergez des registres de paquets StartOS indépendants',
 }
 
 export const long = {
   en_US:
-    'Curate a list of your favorite StartOS services and distribute to friends and family through your own registry.',
+    'Run independent StartOS package registries with separate addresses, catalogs, signers, and permissions. Manage registries and signers through StartOS actions, then publish and curate packages with start-cli.',
   es_ES:
-    'Selecciona una lista de tus servicios favoritos de StartOS y distribúyelos a amigos y familiares a través de tu propio registro.',
+    'Ejecuta registros de paquetes StartOS independientes con direcciones, catálogos, firmantes y permisos separados. Gestiona los registros y firmantes con las acciones de StartOS; publica y administra los paquetes con start-cli.',
   de_DE:
-    'Stelle eine Liste deiner bevorzugten StartOS-Dienste zusammen und verteile sie über deine eigene Registry an Freunde und Familie.',
+    'Betreibe unabhängige StartOS-Paketregistries mit eigenen Adressen, Katalogen, Unterzeichnern und Berechtigungen. Verwalte Registries und Unterzeichner über StartOS-Aktionen und veröffentliche und pflege Pakete mit start-cli.',
   pl_PL:
-    'Stwórz listę ulubionych usług StartOS i udostępniaj je znajomym i rodzinie przez własny rejestr.',
+    'Uruchamiaj niezależne rejestry pakietów StartOS z osobnymi adresami, katalogami, sygnatariuszami i uprawnieniami. Zarządzaj rejestrami i sygnatariuszami za pomocą akcji StartOS, a pakiety publikuj i redaguj przy użyciu start-cli.',
   fr_FR:
-    'Créez une liste de vos services StartOS préférés et distribuez-les à vos amis et votre famille via votre propre registre.',
+    'Exécutez des registres de paquets StartOS indépendants avec des adresses, catalogues, signataires et autorisations distincts. Gérez les registres et signataires avec les actions StartOS, puis publiez et organisez les paquets avec start-cli.',
 }
