@@ -78,7 +78,7 @@ Each active registry has an independent API interface on its own MultiHost. The 
 | `default` | `api-multi`     | `api`           | 5959                                                           |
 | Other IDs | `registry-<id>` | `registry-<id>` | Allocated monotonically above 5959; persisted in the inventory |
 
-The interfaces serve registry RPC, assets, icons, and WebSocket routes. They are unmasked APIs, not browser UIs. Hostnames from one registry are never added to another registry's accepted signing identities.
+The interfaces serve registry RPC, assets, icons, and WebSocket routes. Catalog indexing is distinct from artifact hosting: `registry package add <file> --url <download-url>` requires a hosted matching `.s9pk` and does not upload the local file. The optional `s9pk publish` helper uploads to configured S3 storage before indexing. Signing identities and permissions alone do not supply artifact storage. They are unmasked APIs, not browser UIs. Hostnames from one registry are never added to another registry's accepted signing identities.
 
 ## Installation and First-Run Flow
 
@@ -122,7 +122,7 @@ Fresh installs raise two `important` tasks: Manage Registries to name the initia
 
 Each daemon probes its own internal TCP port. Status messages identify the registry by its current cached or pending name and report only whether that internal port is listening, not external reachability. Name changes are read on the next health-check poll without restarting the daemon. The default registry retains the `primary` health-check ID; others use `registry-<id>`. A failure means that registry did not bind its API listener; inspect its `registry-<id>` logs for rejected configuration or store errors. Another registry being healthy cannot satisfy this check.
 
-Inspect the action's error before retrying; a listening port does not establish valid input, authentication, or successful backend operations. A daemon starting rotates the shared cookie; retry a management action that overlaps that rotation. All enabled daemons must be available for forms that read live state across registries.
+Inspect the action's error before retrying; a listening port does not establish valid input, authentication, or successful backend operations. A daemon starting rotates the shared cookie; retry a management action that overlaps that rotation. All enabled daemons must be available for forms that read live state across registries. `spawn E2BIG` means the CLI arguments exceeded operating-system size limits; reduce unusually large text or public-key exports and reopen the action before retrying.
 
 ## Backups and Restore
 

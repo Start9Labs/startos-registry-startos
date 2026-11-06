@@ -55,7 +55,13 @@ Use `--registry` to select the registry's **Web API** address for CLI commands:
 start-cli --registry '<registry-web-api-address>' registry info
 ```
 
-Use the `start-cli registry` commands for package publishing and curation. Publishing and administration require a signer with the appropriate permissions in that registry and its matching private key. For a GPG identity, select its signing key with `--id-key-gpg '<key fingerprint>'`. Otherwise use the identity whose public key you registered. Use an address listed on the chosen interface: authenticated requests are signed for that destination hostname. Changing one registry's addresses briefly restarts that registry, not the others.
+The registry indexes packages; registering a signer does not upload package files. First make the signed `.s9pk` available at a download URL the registry can read and clients can use. Then index that hosted file:
+
+```bash
+start-cli --registry '<registry-web-api-address>' registry package add '<file.s9pk>' --url '<download-url>'
+```
+
+This command signs and indexes the matching file but does not upload it. Alternatively, `start-cli s9pk publish` uploads to S3 and indexes the package after you configure its bucket and credentials; see the CLI reference. Use the `start-cli registry` commands for catalog curation. Publishing and administration require a signer with the appropriate permissions in that registry and its matching private key. For a GPG identity, select its signing key with `--id-key-gpg '<key fingerprint>'`. Otherwise use the identity whose public key you registered. Use an address listed on the chosen interface: authenticated requests are signed for that destination hostname. Changing one registry's addresses briefly restarts that registry, not the others.
 
 **Admin** grants registry-wide administration, including publishing. Registering a non-admin signer or enabling **Offer for Trust** does not grant publishing rights. For an existing package, an administrator can look up the signer's ID and grant package-specific permission:
 
