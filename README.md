@@ -82,7 +82,7 @@ The interfaces serve registry RPC, assets, icons, and WebSocket routes. They are
 
 ## Installation and First-Run Flow
 
-A fresh install seeds and starts `default`. No credentials or private keys are generated. Two non-blocking tasks prompt for metadata and an administrator.
+A fresh install seeds and starts `default`. No credentials or private keys are generated. Two non-blocking tasks prompt for a registry name and an administrator.
 
 Additional registries start empty. They need their own metadata, signers, and address setup; enabling one does not clone another's store. CLI-backed forms query live registries and therefore require their daemons to be available.
 
