@@ -78,7 +78,9 @@ Each active registry has an independent API interface on its own MultiHost. The 
 | `default` | `api-multi`     | `api`           | 5959                                                           |
 | Other IDs | `registry-<id>` | `registry-<id>` | Allocated monotonically above 5959; persisted in the inventory |
 
-The interfaces serve registry RPC, assets, icons, and WebSocket routes. Catalog indexing is distinct from artifact hosting: `registry package add <file> --url <download-url>` requires a hosted matching `.s9pk` and does not upload the local file. The optional `s9pk publish` helper uploads to configured S3 storage before indexing. Signing identities and permissions alone do not supply artifact storage. They are unmasked APIs, not browser UIs. Hostnames from one registry are never added to another registry's accepted signing identities.
+The interfaces serve registry RPC, assets, icons, and WebSocket routes. They are unmasked APIs, not browser UIs. Hostnames from one registry are never added to another registry's accepted signing identities.
+
+Catalog indexing is distinct from artifact hosting: `registry package add <file> --url <download-url>` requires a hosted matching `.s9pk` and does not upload the local file. The optional `s9pk publish` helper uploads to configured S3 storage before indexing. Signing identities and permissions alone do not supply artifact storage.
 
 ## Installation and First-Run Flow
 
