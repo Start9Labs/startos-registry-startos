@@ -12,7 +12,7 @@
 
 ## Getting set up
 
-1. Use **Configure Registry**, select `default`, and set a name, optionally an icon and description.
+1. Use **Configure Registry** to set your registry's name, optionally an icon and description.
 2. Open **Manage Signers** and expand the section bearing your registry's name. Use its **Signers** list to enter your first signer, with a label, contacts, and public key. For a StartOS identity, `start-cli pubkey` prints the PEM public key on their workstation. You can also paste an armored GPG public-key export. Never paste a private key.
 3. Check **Admin** to let this signer administer the registry. Check **Offer for Trust** only if you want connecting StartOS servers to be offered this signer's keys.
 4. Use the registry's **Web API** address when publishing from your workstation or subscribing another StartOS server.
@@ -21,7 +21,7 @@
 
 1. Open **Manage Registries**, add a registry, enter a unique name, and leave **Enabled** checked.
 2. Choose that name in **Configure Registry** for its icon and description. Expand its named section in **Manage Signers** to set its independent signers and permissions.
-3. Set addresses on its **Web API — <id>** interface. Different registries can use different domains.
+3. Set addresses on its **Web API — <name>** interface. Different registries can use different domains.
 
 Names can be changed in **Manage Registries** or **Configure Registry** without replacing the registry or its addresses. IDs are managed internally. Names queued while a registry is stopped or disabled are applied when it runs again.
 

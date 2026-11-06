@@ -28,8 +28,12 @@ export function enabledRegistries(registries: RegistryRecord[]) {
   return registries.filter((registry) => registry.enabled)
 }
 
-export function withRegistryName(registry: RegistryRecord, name: string) {
-  return registryDisplayName(registry) === name
+export function withRegistryName(
+  registry: RegistryRecord,
+  name: string,
+  publishedName?: string | null,
+) {
+  return registryDisplayName(registry, publishedName) === name
     ? registry
     : { ...registry, pendingName: name }
 }
@@ -76,6 +80,7 @@ export async function requestRegistryName(
   effects: T.Effects,
   id: string,
   name: string,
+  publishedName: string | null,
 ) {
   await registriesJson.update(effects, (current) => {
     if (!current) return null
@@ -87,7 +92,13 @@ export async function requestRegistryName(
     return {
       ...current,
       registries: current.registries.map((registry) =>
-        registry.id === id ? withRegistryName(registry, name) : registry,
+        registry.id === id
+          ? withRegistryName(
+              { ...registry, lastKnownName: publishedName ?? undefined },
+              name,
+              publishedName,
+            )
+          : registry,
       ),
     }
   })
@@ -129,6 +140,7 @@ export async function publishRegistryName(effects: T.Effects, id: string) {
             : entry,
         ),
       },
+    { allowWriteAfterConst: true },
   )
 }
 

@@ -68,13 +68,18 @@ export const config = sdk.Action.withInput(
   async ({ effects, input }) => {
     const registry = await selectedRegistry(input.registry.selection)
     const { name, icon, description } = input.registry.value
-    await requestRegistryName(effects, registry.id, parseRegistryName(name))
+    const info = await readRegistryInfo(effects, registry)
+    await requestRegistryName(
+      effects,
+      registry.id,
+      parseRegistryName(name),
+      info.name,
+    )
     await registryCli(effects, registry, [
       'info',
       'set-icon',
       ...(icon ? ['--', icon] : ['--clear']),
     ])
-    const info = await readRegistryInfo(effects, registry)
     if ((description || null) !== descriptionText(info.description)) {
       await registryCli(effects, registry, [
         'info',
