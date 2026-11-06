@@ -35,7 +35,7 @@ Removing an entry in **Manage Registries** stops that registry and hides its int
 - **Offer for Trust** includes the signer's public keys in the trust proposal clients receive from this registry. It does not grant administrator rights.
 - Removing a signer also removes its authorizations. You can still use this StartOS action to add an administrator if you remove the last one.
 
-The matching private keys stay with their owners. GPG public exports retain their identities and fingerprints and must contain supported Ed25519 signing keys. Existing public keys are read-only; use the upstream CLI to rotate them.
+The matching private keys stay with their owners. GPG public exports retain their identities and fingerprints and must contain supported Ed25519 signing keys. Leave existing public keys unchanged; use the upstream CLI to rotate them. Changing an existing key causes a save error.
 
 ## Publishing and subscribing
 

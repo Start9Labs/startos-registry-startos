@@ -82,7 +82,7 @@ const dict = {
   Signers: 69,
   Contacts: 70,
   'Removing a signer from this list deletes all its authorizations. Local StartOS actions can restore an administrator.': 71,
-  'Paste PEM public keys or complete armored GPG public-key exports. Required for new signers; existing keys are read-only. Never enter a private key.': 72,
+  'Paste PEM public keys or complete armored GPG public-key exports. Required for new signers; existing keys must remain unchanged. Never enter a private key.': 72,
   'Edit signer information, administrator rights, and trust offers.': 73,
   'Signers changed while this form was open. Reopen it and try again.': 74,
   'Each existing signer must appear only once.': 75,

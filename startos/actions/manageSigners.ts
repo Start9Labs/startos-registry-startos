@@ -98,7 +98,7 @@ function signersSpec(snapshot: State) {
             key: Value.textarea({
               name: i18n('Public Key'),
               description: i18n(
-                'Paste PEM public keys or complete armored GPG public-key exports. Required for new signers; existing keys are read-only. Never enter a private key.',
+                'Paste PEM public keys or complete armored GPG public-key exports. Required for new signers; existing keys must remain unchanged. Never enter a private key.',
               ),
               required: false,
               default: null,
