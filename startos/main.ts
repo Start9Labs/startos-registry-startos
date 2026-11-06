@@ -1,8 +1,21 @@
+import { Daemons } from '@start9labs/start-sdk'
 import { socksHostId, socksPort } from 'tor-startos/startos/utils'
 import { configYaml } from './fileModels/config.yaml'
+import {
+  enabledRegistries,
+  registriesJson,
+  publishRegistryName,
+} from './fileModels/registries.json'
 import { i18n } from './i18n'
+import { manifest } from './manifest'
 import { sdk } from './sdk'
-import { apiPort, mountpoint } from './utils'
+import {
+  defaultRegistryId,
+  mountpoint,
+  registryConfigPath,
+  registryDataPath,
+  registryDisplayName,
+} from './utils'
 
 export const main = sdk.setupMain(async ({ effects }) => {
   console.info(i18n('Starting StartOS Registry!'))
@@ -20,42 +33,87 @@ export const main = sdk.setupMain(async ({ effects }) => {
       fallbackPort: socksPort,
     })
     .const()
-  // start-registryd parses tor-proxy as a URL; the bridge address is bare host:port.
-  await configYaml.merge(effects, { 'tor-proxy': `socks5h://${torProxy}` })
 
-  // start-registryd reads registry-hostname once at startup, so a change has to restart it.
-  await configYaml.read((c) => c['registry-hostname']).const(effects)
-  await configYaml.read((c) => c['security-notifications']).const(effects)
+  return sdk.Daemons.dynamic(effects, async ({ effects }) => {
+    const registries =
+      (await registriesJson
+        .read((s) =>
+          enabledRegistries(s.registries).map(({ id, port, pendingName }) => ({
+            id,
+            port,
+            pendingName,
+          })),
+        )
+        .const(effects)) ?? []
+    let daemons: Daemons<typeof manifest, string> = sdk.Daemons.of(effects)
+    for (const registry of registries) {
+      const config = configYaml(registry)
+      // start-registryd parses tor-proxy as a URL; the bridge address is bare host:port.
+      await config.merge(effects, { 'tor-proxy': `socks5h://${torProxy}` })
 
-  return sdk.Daemons.of(effects).addDaemon('primary', {
-    subcontainer: sdk.SubContainer.of(
-      effects,
-      { imageId: 'startos-registry', sharedRun: true },
-      sdk.Mounts.of()
-        .mountVolume({
-          volumeId: 'main',
-          subpath: null,
-          mountpoint,
-          readonly: false,
-        })
-        .mountVolume({
-          volumeId: 'config',
-          subpath: '/config.yaml',
-          mountpoint: '/etc/startos/config.yaml',
-          readonly: false,
-          type: 'file',
-        }),
-      'startos-registry-sub',
-    ),
-    exec: { command: ['start-registryd'] },
-    ready: {
-      display: i18n('Web API'),
-      fn: () =>
-        sdk.healthCheck.checkPortListening(effects, apiPort, {
-          successMessage: i18n('The web API is ready'),
-          errorMessage: i18n('The API is unreachable'),
-        }),
-    },
-    requires: [],
+      // start-registryd reads registry-hostname once at startup, so a change has to restart it.
+      const hostnames = await config
+        .read((c) => c['registry-hostname'])
+        .const(effects)
+      const daemonId =
+        registry.id === defaultRegistryId
+          ? 'primary'
+          : `registry-${registry.id}`
+      daemons = daemons.addDaemon(daemonId as never, {
+        subcontainer: sdk.SubContainer.of(
+          effects,
+          { imageId: 'startos-registry', sharedRun: true },
+          sdk.Mounts.of()
+            .mountVolume({
+              volumeId: 'main',
+              subpath: registryDataPath(registry.id),
+              mountpoint,
+              readonly: false,
+            })
+            .mountVolume({
+              volumeId: 'config',
+              subpath: registryConfigPath(registry.id),
+              mountpoint: '/etc/startos/config.yaml',
+              readonly: false,
+              type: 'file',
+            }),
+          `registry-${registry.id}`,
+        ),
+        exec: { command: ['start-registryd'] },
+        uses: hostnames,
+        ready: {
+          display: i18n('Web API'),
+          fn: async () => {
+            const current = await registriesJson
+              .read((s) =>
+                s.registries.find((entry) => entry.id === registry.id),
+              )
+              .once()
+            const name = registryDisplayName(current ?? registry)
+            return sdk.healthCheck.checkPortListening(effects, registry.port, {
+              successMessage: i18n('API port listening — ${registry}', {
+                registry: name,
+              }),
+              errorMessage: i18n('API port not listening — ${registry}', {
+                registry: name,
+              }),
+            })
+          },
+        },
+        requires: [],
+      })
+      daemons = daemons.addOneshot(`publish-name-${registry.id}` as never, {
+        subcontainer: null,
+        exec: {
+          fn: async () => {
+            await publishRegistryName(effects, registry.id)
+            return null
+          },
+        },
+        uses: registry.pendingName ?? null,
+        requires: [daemonId as never],
+      })
+    }
+    return daemons
   })
 })
