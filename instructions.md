@@ -41,9 +41,11 @@ Existing public-key text must remain unchanged; use the upstream CLI for key rot
 
 The action checks form values and stale signer state across all sections before starting updates. Once CLI commands begin, an error—including rejection of a new key by the registry—can leave earlier changes applied. Reopen the action to inspect the current lists before retrying.
 
+All enabled registry daemons must be available to open **Configure Registry**, **Manage Signers**, or **List Packages**, even when working with just one registry. If one registry is unavailable, use **Manage Registries** to disable it before managing another.
+
 ## Icons and descriptions
 
-**Configure Registry** changes only the selected registry's icon and description. Use a base64 image data URL or an HTTP(S) URL for the icon. Leave either field blank to clear it. Description text supports Markdown and appears above that registry's packages in the marketplace.
+**Configure Registry** changes only the selected registry's icon and description. Use a base64 image data URL or an HTTP(S) URL for the icon. Leave either field blank to clear it. Description text supports Markdown and appears above that registry's packages in the marketplace. Clearing it removes all language variants. Icon and description changes use separate commands: if one fails, the other may already have applied. Reopen the action and check both fields before retrying.
 
 ## Publishing and subscribing
 
@@ -54,6 +56,15 @@ start-cli --registry '<registry-web-api-address>' registry info
 ```
 
 Use the `start-cli registry` commands for package publishing and curation. Publishing and administration require a signer with the appropriate permissions in that registry and its matching private key. For a GPG identity, select its signing key with `--id-key-gpg '<key fingerprint>'`. Otherwise use the identity whose public key you registered. Use an address listed on the chosen interface: authenticated requests are signed for that destination hostname. Changing one registry's addresses briefly restarts that registry, not the others.
+
+**Admin** grants registry-wide administration, including publishing. Registering a non-admin signer or enabling **Offer for Trust** does not grant publishing rights. For an existing package, an administrator can look up the signer's ID and grant package-specific permission:
+
+```bash
+start-cli --registry '<registry-web-api-address>' registry admin signer list
+start-cli --registry '<registry-web-api-address>' registry package signer add '<existing-package-id>' '<signer-id>'
+```
+
+The second command grants all versions by default; use `--versions` to constrain the allowed range. These grants belong only to the targeted registry and are managed through the CLI, not the StartOS signer form.
 
 To subscribe another StartOS server, add the chosen Web API address as a registry source. **List Packages** selects an enabled registry and returns its name, package count, and alphabetical package titles. A result with count zero identifies the selected registry and says its catalog is empty.
 

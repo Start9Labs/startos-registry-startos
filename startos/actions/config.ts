@@ -1,6 +1,13 @@
+import { T } from '@start9labs/start-sdk'
 import { i18n } from '../i18n'
 import { sdk } from '../sdk'
-import { RegistryInfo, registryCli, readRegistryInfo } from '../utils'
+import {
+  RegistryInfo,
+  registryCli,
+  readRegistryInfo,
+  registryAvailabilityDescription,
+  registryUpdateWarning,
+} from '../utils'
 import { registryInput, selectedRegistry } from '../fileModels/registries.json'
 
 const { InputSpec, Value } = sdk
@@ -12,7 +19,10 @@ export const config = sdk.Action.withInput(
   // metadata
   async () => ({
     name: i18n('Configure Registry'),
-    description: i18n('Set the icon and description of a selected registry.'),
+    description:
+      i18n('Set the icon and description of a selected registry.') +
+      ' ' +
+      registryAvailabilityDescription(),
     warning: null,
     allowedStatuses: 'only-running',
     group: null,
@@ -42,9 +52,12 @@ export const config = sdk.Action.withInput(
       }),
       description: Value.textarea({
         name: i18n('Registry Description'),
-        description: i18n(
-          'Shown above the selected registry’s packages in the marketplace. Markdown is supported.',
-        ),
+        description:
+          i18n(
+            'Shown above the selected registry’s packages in the marketplace. Markdown is supported. Leave blank to clear the description in all languages.',
+          ) +
+          ' ' +
+          registryUpdateWarning(),
         default: descriptionText(info.description),
         required: false,
       }),
@@ -57,8 +70,13 @@ export const config = sdk.Action.withInput(
   async () => null,
 
   // the execution function
-  async ({ effects, input }) => {
-    const registry = await selectedRegistry(input.registry.selection)
+  async ({ effects, input, spec }) => {
+    const registry = {
+      ...(await selectedRegistry(input.registry.selection)),
+      name: (spec.registry as T.inputSpecTypes.ValueSpecUnion).variants[
+        input.registry.selection
+      ].name,
+    }
     const { icon, description } = input.registry.value
     const nextDescription = description?.trim() ? description : null
     const info = await readRegistryInfo(effects, registry)

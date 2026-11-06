@@ -1,6 +1,11 @@
 export const DEFAULT_LANG = 'en_US'
 
 const dict = {
+  '${registry}: ${message}': 91,
+  '${registry} / ${signer}: ${message}': 92,
+  'Signer row ${position}': 93,
+  'Updates can partially apply if a CLI command fails. Reopen the action to inspect current state before retrying.': 94,
+  'All enabled registries must be available.': 95,
   // main.ts
   'Starting StartOS Registry!': 0,
   'Web API': 1,
@@ -17,7 +22,7 @@ const dict = {
   'Registry Icon': 8,
   'Enter a base64 image data URL or an HTTP(S) URL.': 9,
   'Registry Description': 24,
-  'Shown above the selected registry’s packages in the marketplace. Markdown is supported.': 25,
+  'Shown above the selected registry’s packages in the marketplace. Markdown is supported. Leave blank to clear the description in all languages.': 25,
   'Use a base64 image data URL or an HTTP(S) URL. Leave blank to clear the selected registry’s icon.': 90,
 
   // actions/manageSigners.ts

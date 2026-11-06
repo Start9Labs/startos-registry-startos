@@ -88,7 +88,7 @@ Additional registries start with empty catalogs and no signers. Their names are 
 
 ## Actions
 
-Configure Registry and List Packages select an enabled registry by name. Manage Signers exposes all enabled registries as named collapsible sections, with one submission for edits across sections. Internal IDs never appear as editable fields or choice labels.
+Configure Registry and List Packages select an enabled registry by name. Manage Signers exposes all enabled registries as named collapsible sections, with one submission for edits across sections. Internal IDs never appear as editable fields or choice labels. All three live actions require every enabled daemon to be available, even for a single-registry selection. Disable an unavailable registry through Manage Registries to manage the others.
 
 ### Manage Registries
 
@@ -96,7 +96,7 @@ Use this to create, rename, enable, or disable registries by name. Names must be
 
 ### Configure Registry
 
-Use this only to change the selected registry's icon and description through its live CLI. Registry naming belongs exclusively to Manage Registries; this form has no name field and cannot queue renames. Changes take seconds and require no restart. Saving the same values is idempotent. An empty icon or empty/whitespace-only description clears that stored field. An unchanged description editor preserves its other language variants; changing or clearing it replaces the complete description.
+Use this only to change the selected registry's icon and description through its live CLI. Registry naming belongs exclusively to Manage Registries; this form has no name field and cannot queue renames. Changes take seconds and require no restart. Saving the same values is idempotent. An empty icon or empty/whitespace-only description clears that stored field. An unchanged description editor preserves its other language variants; changing or clearing it replaces the complete description. Icon is written before description; these commands are not transactional. A later description-command failure leaves an earlier icon change applied. The form warns to reopen and inspect both fields before retrying.
 
 ### Manage Signers
 
@@ -104,7 +104,7 @@ The form presents one collapsible object per enabled registry, titled with its n
 
 Admin and Offer for Trust are independent: an administrator need not be offered to clients, and a proposed signer need not administer the registry. Signer removal drops its authorizations; revoking Admin retains the signer and its other authorizations. Trust proposals are maintained as a complete selected-ID set, preserving unrelated signers.
 
-Supply public keys only; private signing keys stay with their owners. New entries accept PEM public keys and complete armored GPG public exports, retaining certificate identities and fingerprints. Upstream imports supported Ed25519 signing keys, not arbitrary RSA or ECDSA keys. Existing public keys cannot be replaced by this action; key rotation uses the upstream CLI. The handler rejects changes to existing public-key text before any writes, even if the form allows editing it. Editing labels, contacts, and permission flags preserves signer IDs, keys, and package authorizations. Removing a list entry deletes that signer's authorizations.
+Supply public keys only; private signing keys stay with their owners. New entries accept PEM public keys and complete armored GPG public exports, retaining certificate identities and fingerprints. Upstream imports supported Ed25519 signing keys, not arbitrary RSA or ECDSA keys. Existing public keys cannot be replaced by this action; key rotation uses the upstream CLI. The handler rejects changes to existing public-key text before any writes, even if the form allows editing it. Editing labels, contacts, and permission flags preserves signer IDs, keys, and package authorizations. CLI failures identify the registry and, for signer-specific commands, the signer label. Preflight and stale-state errors also identify their registry; row-validation failures include the signer label or row position. Removing a list entry deletes that signer's authorizations.
 
 Every enabled registry's list is loaded when the form opens, including collapsed sections. Before writing to any registry, the handler checks form values in all sections and rejects changes to the enabled registry set, signer records, administrator membership, or trust selection since form open. Field-validation and stale-snapshot failures cannot partially save an earlier section. Subsequent CLI commands are not transactional: upstream rejection of a new key or another command failure can occur after earlier updates were applied. Reopen the form to inspect current state before retrying.
 
@@ -136,7 +136,7 @@ Restore brings back the same active registry set. Init derives each hostname lis
 2. CLI-backed forms require enabled registry daemons to be available. With no enabled registries they direct the caller to Manage Registries; enabling a retained entry restores the same store. When only one registry is enabled, Configure Registry and List Packages preselect it.
 3. No separate registry web application is exposed. StartOS actions manage registry settings and signers; publishing and curation use an external CLI and the publisher's private key.
 4. Categories and other upstream curation settings are not exposed by Configure Registry.
-5. Administrator grants and trust proposals are separate decisions. Offering a key does not grant publishing or administrator authority.
+5. Administrator grants and trust proposals are separate decisions. Offering a key does not grant publishing or administrator authority. Administrators can publish registry-wide; a non-admin needs a package-specific authorization, assigned through `registry package signer add` for an existing index entry. The CLI defaults to all versions unless `--versions` constrains the grant. These authorizations are not edited by Manage Signers.
 6. The package's local loopback-HTTP actions remain available without an administrator key, including recovery after the last admin grant is removed.
 
 ## Quick Reference for AI Consumers

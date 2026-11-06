@@ -2,7 +2,14 @@ import { T, z } from '@start9labs/start-sdk'
 import { isDeepStrictEqual } from 'node:util'
 import { i18n } from '../i18n'
 import { sdk } from '../sdk'
-import { Registry, registryCli, readRegistryInfo } from '../utils'
+import {
+  Registry,
+  registryCli,
+  readRegistryInfo,
+  registryError,
+  registryAvailabilityDescription,
+  registryUpdateWarning,
+} from '../utils'
 import {
   activeRegistries,
   namedRegistries,
@@ -69,9 +76,12 @@ function signersSpec(snapshot: State) {
           name: i18n('Signers'),
           // SDK 4.0.0 types object-list defaults as []; the renderer accepts entries.
           default: defaults as [],
-          description: i18n(
-            'On submission, removing a signer deletes its authorizations from this section’s registry. Unchecking Admin keeps the signer. All registry sections are submitted together.',
-          ),
+          description:
+            i18n(
+              'On submission, removing a signer deletes its authorizations from this section’s registry. Unchecking Admin keeps the signer. All registry sections are submitted together.',
+            ) +
+            ' ' +
+            registryUpdateWarning(),
         },
         {
           displayAs: '{{name}}',
@@ -134,9 +144,12 @@ export const manageSigners = sdk.Action.withInput(
   'manage-signers',
   async () => ({
     name: i18n('Manage Signers'),
-    description: i18n(
-      'Edit signers, administrator rights, and trust offers across enabled registries.',
-    ),
+    description:
+      i18n(
+        'Edit signers, administrator rights, and trust offers across enabled registries.',
+      ) +
+      ' ' +
+      registryAvailabilityDescription(),
     warning: null,
     allowedStatuses: 'only-running',
     group: null,
@@ -160,7 +173,7 @@ export const manageSigners = sdk.Action.withInput(
       ),
     ),
   async () => null,
-  async ({ effects, input }) => {
+  async ({ effects, input, spec }) => {
     const registries = (await activeRegistries().once()) ?? []
     if (
       registries.length !== Object.keys(input).length ||
@@ -173,14 +186,18 @@ export const manageSigners = sdk.Action.withInput(
       )
     }
     const plans = await Promise.all(
-      registries.map(async (registry) => {
+      registries.map(async (entry) => {
+        const registry = {
+          ...entry,
+          name: (spec[entry.id] as T.inputSpecTypes.ValueSpecObject).name,
+        }
         const current = await readState(effects, registry)
         if (!isDeepStrictEqual(input[registry.id].snapshot, current))
-          throw new Error(changedError)
+          throw registryError(registry, changedError)
         return {
           registry,
           current,
-          plan: prepareSigners(current, input[registry.id]),
+          plan: prepareSigners(registry, current, input[registry.id]),
         }
       }),
     )
@@ -191,39 +208,49 @@ export const manageSigners = sdk.Action.withInput(
 )
 
 function prepareSigners(
+  registry: Registry,
   current: State,
   { signers }: ReturnType<typeof signersSpec>['_TYPE'],
 ) {
   const seen = new Set<string>()
-  const desired = signers.map((signer) => {
-    const name = signer.name.trim()
-    if (!name) throw new Error(i18n('Every signer needs a nonblank label.'))
-    if (signer.id !== null) {
-      if (!Object.hasOwn(current.signers, signer.id))
-        throw new Error(changedError)
-      if (seen.has(signer.id))
-        throw new Error(
-          i18n(
-            'Each existing signer must appear only once per registry section.',
-          ),
-        )
-      seen.add(signer.id)
-      if (
-        (signer.key ?? '').trim() !==
-        publicKeys(current.signers[signer.id]).trim()
-      ) {
-        throw new Error(
-          i18n(
-            'Existing signing keys cannot be changed here. Use the registry CLI to rotate keys.',
-          ),
-        )
+  const desired = signers.map((signer, index) => {
+    try {
+      const name = signer.name.trim()
+      if (!name) throw new Error(i18n('Every signer needs a nonblank label.'))
+      if (signer.id !== null) {
+        if (!Object.hasOwn(current.signers, signer.id))
+          throw new Error(changedError)
+        if (seen.has(signer.id))
+          throw new Error(
+            i18n(
+              'Each existing signer must appear only once per registry section.',
+            ),
+          )
+        seen.add(signer.id)
+        if (
+          (signer.key ?? '').trim() !==
+          publicKeys(current.signers[signer.id]).trim()
+        ) {
+          throw new Error(
+            i18n(
+              'Existing signing keys cannot be changed here. Use the registry CLI to rotate keys.',
+            ),
+          )
+        }
       }
-    }
-    return {
-      ...signer,
-      name,
-      contacts: signer.contacts.map(normalizeContact),
-      keys: signer.id === null ? parsePublicKeys(signer.key ?? '') : [],
+      return {
+        ...signer,
+        name,
+        contacts: signer.contacts.map(normalizeContact),
+        keys: signer.id === null ? parsePublicKeys(signer.key ?? '') : [],
+      }
+    } catch (error) {
+      throw registryError(
+        registry,
+        error,
+        signer.name.trim() ||
+          i18n('Signer row ${position}', { position: index + 1 }),
+      )
     }
   })
   return { seen, desired }
@@ -238,14 +265,19 @@ async function reconcileSigners(
   for (const signer of desired) {
     if (signer.id !== null) continue
     signer.id = (
-      await registryCli(effects, registry, [
-        'admin',
-        'signer',
-        'add',
-        `--name=${signer.name}`,
-        ...signer.contacts.map((contact) => `--contact=${contact}`),
-        ...signer.keys.map((key) => `--key=${key}`),
-      ])
+      await registryCli(
+        effects,
+        registry,
+        [
+          'admin',
+          'signer',
+          'add',
+          `--name=${signer.name}`,
+          ...signer.contacts.map((contact) => `--contact=${contact}`),
+          ...signer.keys.map((key) => `--key=${key}`),
+        ],
+        signer.name,
+      )
     ).stdout
       .toString()
       .trim()
@@ -265,20 +297,20 @@ async function reconcileSigners(
         ),
       ]
       if (args.length)
-        await registryCli(effects, registry, [
-          'admin',
-          'signer',
-          'edit',
-          id,
-          ...args,
-        ])
+        await registryCli(
+          effects,
+          registry,
+          ['admin', 'signer', 'edit', id, ...args],
+          signer.name,
+        )
     }
     if (signer.admin !== current.admins.includes(id)) {
-      await registryCli(effects, registry, [
-        'admin',
-        signer.admin ? 'add' : 'remove',
-        id,
-      ])
+      await registryCli(
+        effects,
+        registry,
+        ['admin', signer.admin ? 'add' : 'remove', id],
+        signer.name,
+      )
     }
   }
 
@@ -299,7 +331,12 @@ async function reconcileSigners(
   }
   for (const id of Object.keys(current.signers)) {
     if (!seen.has(id))
-      await registryCli(effects, registry, ['admin', 'signer', 'remove', id])
+      await registryCli(
+        effects,
+        registry,
+        ['admin', 'signer', 'remove', id],
+        current.signers[id].name,
+      )
   }
 }
 

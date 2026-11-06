@@ -55,6 +55,7 @@ export function assertUniqueRegistryNames(names: string[]) {
 export type Registry = {
   id: string
   port: number
+  name?: string
   lastKnownName?: string
   pendingName?: string
 }
@@ -72,6 +73,33 @@ export function registryDisplayName(registry: Registry, name?: string | null) {
       registry.pendingName ??
       (name === undefined ? registry.lastKnownName : name)
     )?.trim() || i18n('Unnamed Registry')
+  )
+}
+
+export function registryAvailabilityDescription() {
+  return i18n('All enabled registries must be available.')
+}
+
+export function registryUpdateWarning() {
+  return i18n(
+    'Updates can partially apply if a CLI command fails. Reopen the action to inspect current state before retrying.',
+  )
+}
+
+export function registryError(
+  registry: Registry,
+  error: unknown,
+  signer?: string,
+) {
+  const values = {
+    registry: registry.name ?? registryDisplayName(registry),
+    message: error instanceof Error ? error.message : String(error),
+  }
+  return new Error(
+    signer === undefined
+      ? i18n('${registry}: ${message}', values)
+      : i18n('${registry} / ${signer}: ${message}', { ...values, signer }),
+    { cause: error },
   )
 }
 
@@ -108,18 +136,23 @@ export async function registryCli(
   effects: T.Effects,
   registry: Registry,
   args: string[],
+  signer?: string,
 ) {
-  return sdk.SubContainer.withTemp(
-    effects,
-    { imageId: 'startos-registry', sharedRun: true },
-    null,
-    `cli-${registry.id}`,
-    async (sub) =>
-      sub.execFail([
-        'start-registry',
-        '--registry',
-        `http://127.0.0.1:${registry.port}`,
-        ...args,
-      ]),
-  )
+  try {
+    return await sdk.SubContainer.withTemp(
+      effects,
+      { imageId: 'startos-registry', sharedRun: true },
+      null,
+      `cli-${registry.id}`,
+      async (sub) =>
+        sub.execFail([
+          'start-registry',
+          '--registry',
+          `http://127.0.0.1:${registry.port}`,
+          ...args,
+        ]),
+    )
+  } catch (error) {
+    throw registryError(registry, error, signer)
+  }
 }

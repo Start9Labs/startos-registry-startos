@@ -1,7 +1,7 @@
 import { ExtendedVersion, T } from '@start9labs/start-sdk'
 import { i18n } from '../i18n'
 import { sdk } from '../sdk'
-import { registryCli } from '../utils'
+import { registryCli, registryAvailabilityDescription } from '../utils'
 import { registrySelect, selectedRegistry } from '../fileModels/registries.json'
 
 // the slice of `start-registry package index` this action reads
@@ -16,9 +16,10 @@ export const listPackages = sdk.Action.withInput(
   // metadata
   async () => ({
     name: i18n('List Packages'),
-    description: i18n(
-      'List package titles and a count for a selected registry.',
-    ),
+    description:
+      i18n('List package titles and a count for a selected registry.') +
+      ' ' +
+      registryAvailabilityDescription(),
     warning: null,
     allowedStatuses: 'only-running',
     group: null,
@@ -30,10 +31,11 @@ export const listPackages = sdk.Action.withInput(
 
   // the execution function
   async ({ effects, input, spec }) => {
-    const registry = await selectedRegistry(input.registry)
+    const selected = await selectedRegistry(input.registry)
     const name = (spec.registry as T.inputSpecTypes.ValueSpecSelect).values[
       input.registry
     ]
+    const registry = { ...selected, name }
     const { packages }: PackageIndex = JSON.parse(
       (
         await registryCli(effects, registry, [
