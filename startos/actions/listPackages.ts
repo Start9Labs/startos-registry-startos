@@ -1,44 +1,49 @@
-import { ExtendedVersion } from '@start9labs/start-sdk'
+import { ExtendedVersion, T } from '@start9labs/start-sdk'
 import { i18n } from '../i18n'
 import { sdk } from '../sdk'
+import { registryCli, registryAvailabilityDescription } from '../utils'
+import { registrySelect, selectedRegistry } from '../fileModels/registries.json'
 
 // the slice of `start-registry package index` this action reads
 type PackageIndex = {
   packages: Record<string, { versions: Record<string, { title: string }> }>
 }
 
-export const listPackages = sdk.Action.withoutInput(
+export const listPackages = sdk.Action.withInput(
   // id
   'list-packages',
 
   // metadata
-  async ({ effects }) => ({
+  async () => ({
     name: i18n('List Packages'),
-    description: i18n('Show the names of the packages hosted on this registry'),
+    description:
+      i18n('List package titles and a count for a selected registry.') +
+      ' ' +
+      registryAvailabilityDescription(),
     warning: null,
     allowedStatuses: 'only-running',
     group: null,
     visibility: 'enabled',
   }),
 
+  sdk.InputSpec.of({ registry: registrySelect }),
+  async () => null,
+
   // the execution function
-  async ({ effects }) => {
-    const { packages } = await sdk.SubContainer.withTemp<PackageIndex>(
-      effects,
-      { imageId: 'startos-registry', sharedRun: true },
-      null,
-      'list-packages',
-      async (sub) =>
-        JSON.parse(
-          (
-            await sub.execFail([
-              'start-registry',
-              'package',
-              'index',
-              '--format=json',
-            ])
-          ).stdout as string,
-        ),
+  async ({ effects, input, spec }) => {
+    const selected = await selectedRegistry(input.registry)
+    const name = (spec.registry as T.inputSpecTypes.ValueSpecSelect).values[
+      input.registry
+    ]
+    const registry = { ...selected, name }
+    const { packages }: PackageIndex = JSON.parse(
+      (
+        await registryCli(effects, registry, [
+          'package',
+          'index',
+          '--format=json',
+        ])
+      ).stdout as string,
     )
 
     const titles = Object.values(packages)
@@ -46,18 +51,22 @@ export const listPackages = sdk.Action.withoutInput(
       .filter((title): title is string => title !== null)
       .sort((a, b) => a.localeCompare(b))
 
+    const title = i18n('Packages in ${registry}: ${count}', {
+      registry: name,
+      count: titles.length,
+    })
     if (!titles.length) {
       return {
         version: '1',
-        title: i18n('Hosted Packages'),
-        message: i18n('No packages are hosted on this registry yet.'),
+        title,
+        message: i18n('The selected registry’s catalog is empty.'),
         result: null,
       }
     }
 
     return {
       version: '1',
-      title: i18n('Packages hosted: ${count}', { count: titles.length }),
+      title,
       message: null,
       result: {
         type: 'multiline',

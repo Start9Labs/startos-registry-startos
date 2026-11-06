@@ -34,7 +34,7 @@ verified, tried, and decided belongs in the commit message and the PR body.
 
 ## This repo
 
-- **Keep `sharedRun: true` on every subcontainer.** The `start-registry` CLI reaches the running daemon through the shared `/run` socket; without it every action fails.
+- **Keep `sharedRun: true` on every subcontainer.** The CLI and daemon need the same `/run/startos/registry.authcookie`; management requests use explicit loopback HTTP, not a Unix socket.
 - **Don't declare Tor as a dependency** for the `tor-startos` import — it would turn an optional outbound path into an install requirement.
 - **`config.yaml` holds only daemon settings.** Rebuild `registry-hostname` from the live address set, never append, so a removed address leaves the list; and don't model name, icon, description or administrators there — the daemon's own store owns them.
 - **Pin the image to `v<registry version>`, never `:master`**, which moves with every merge.

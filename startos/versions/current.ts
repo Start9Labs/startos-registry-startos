@@ -1,21 +1,37 @@
 import { VersionInfo, IMPOSSIBLE } from '@start9labs/start-sdk'
+import { sdk } from '../sdk'
+import { configYaml } from '../fileModels/config.yaml'
+import { registriesJson } from '../fileModels/registries.json'
+import { apiPort, defaultRegistryId } from '../utils'
 
 export const current = VersionInfo.of({
-  version: '1.4.0:0',
+  version: '1.4.0:1',
   releaseNotes: {
     en_US:
-      'Updates StartOS Registry to 1.4.0. Registered signers can co-sign indexed packages without re-uploading them. Package publishing, mirroring, and promotion accept verified endorsements; re-adding a package with another key retains its signature. Registry trust proposals preserve selected signer identities and complete GPG public-key information. Full release notes: https://github.com/Start9Labs/start-technologies/releases/tag/start-registry%2Fv1.4.0',
+      'Run multiple independent registries, each with its own addresses, packages, settings, and signers. Manage Registries creates named registries with automatic internal IDs and restores disabled entries without deleting their data. All actions identify registries by name; only Manage Registries edits names. Manage Signers replaces the administrator actions with named collapsible sections so several registries can be edited in one submission, supporting GPG public keys, Admin permissions, and Offer for Trust. The existing registry keeps its data and addresses. Configure Registry can clear the icon and description. Package-list results include the selected registry name and count, and CLI-backed actions direct users to enable a registry when none are enabled. Removes Configure Security Notifications and disables existing OS security announcements. Requires StartOS 0.4.1 or later.',
     es_ES:
-      'Actualiza StartOS Registry a 1.4.0. Los firmantes registrados pueden añadir su firma a paquetes indexados sin volver a subirlos. La publicación, la adición de espejos y la promoción de paquetes aceptan firmas adicionales verificadas; volver a añadir un paquete con otra clave conserva su firma. Las propuestas de confianza del registro conservan las identidades de los firmantes seleccionados y toda la información de sus claves públicas GPG. Notas completas de la versión: https://github.com/Start9Labs/start-technologies/releases/tag/start-registry%2Fv1.4.0',
+      'Ejecuta varios registros independientes, cada uno con sus propias direcciones, paquetes, ajustes y firmantes. Gestionar registros crea registros con nombre e identificadores internos automáticos y restaura entradas deshabilitadas sin borrar sus datos. Todas las acciones identifican los registros por nombre; solo Gestionar registros permite editar los nombres. Gestionar firmantes sustituye las acciones de administradores por secciones plegables con nombre para editar varios registros en un solo envío, con claves públicas GPG, permisos de administrador y la opción de ofrecer confianza. El registro existente conserva sus datos y direcciones. Configurar registro permite borrar el icono y la descripción. La lista de paquetes incluye el nombre del registro seleccionado y la cantidad; si no hay registros habilitados, las acciones basadas en CLI indican que se debe habilitar uno. Elimina la acción Configurar notificaciones de seguridad y desactiva los anuncios de seguridad del sistema existentes. Requiere StartOS 0.4.1 o posterior.',
     de_DE:
-      'Aktualisiert StartOS Registry auf 1.4.0. Registrierte Unterzeichner können indexierte Pakete ohne erneutes Hochladen mitunterzeichnen. Veröffentlichung, Spiegelung und Übernahme von Paketen akzeptieren verifizierte Zusatzsignaturen; beim erneuten Hinzufügen mit einem anderen Schlüssel bleibt dessen Signatur erhalten. Vertrauensvorschläge der Registry bewahren die ausgewählten Unterzeichneridentitäten und die vollständigen öffentlichen GPG-Schlüsselinformationen. Vollständige Versionshinweise: https://github.com/Start9Labs/start-technologies/releases/tag/start-registry%2Fv1.4.0',
+      'Mehrere unabhängige Registries mit eigenen Adressen, Paketen, Einstellungen und Unterzeichnern betreiben. Registries verwalten erstellt benannte Registries mit automatischen internen IDs und stellt deaktivierte Einträge ohne Datenverlust wieder her. Alle Aktionen zeigen Registry-Namen; nur Registries verwalten bearbeitet die Namen. Unterzeichner verwalten ersetzt die Administratoraktionen durch benannte einklappbare Abschnitte zum gemeinsamen Bearbeiten mehrerer Registries und unterstützt öffentliche GPG-Schlüssel, Administratorrechte und Vertrauensangebote. Die bestehende Registry behält ihre Daten und Adressen. Registry konfigurieren kann Symbol und Beschreibung löschen. Paketlisten nennen die ausgewählte Registry und die Anzahl; wenn keine Registry aktiviert ist, verweisen CLI-basierte Aktionen auf die Aktivierung einer Registry. Entfernt die Aktion Sicherheitsbenachrichtigungen konfigurieren und deaktiviert bestehende Betriebssystem-Sicherheitsankündigungen. Erfordert StartOS 0.4.1 oder neuer.',
     pl_PL:
-      'Aktualizuje StartOS Registry do wersji 1.4.0. Zarejestrowani sygnatariusze mogą podpisywać pakiety w indeksie bez ich ponownego przesyłania. Publikowanie, dodawanie serwerów lustrzanych i przenoszenie pakietów między rejestrami akceptują zweryfikowane dodatkowe podpisy; ponowne dodanie pakietu innym kluczem zachowuje jego podpis. Propozycje zaufania rejestru zachowują tożsamości wybranych sygnatariuszy i pełne informacje o ich kluczach publicznych GPG. Pełne informacje o wydaniu: https://github.com/Start9Labs/start-technologies/releases/tag/start-registry%2Fv1.4.0',
+      'Uruchamiaj wiele niezależnych rejestrów z własnymi adresami, pakietami, ustawieniami i sygnatariuszami. Zarządzaj rejestrami tworzy nazwane rejestry z automatycznymi identyfikatorami wewnętrznymi i przywraca wyłączone wpisy bez kasowania danych. Wszystkie akcje pokazują nazwy rejestrów; tylko Zarządzaj rejestrami zmienia nazwy. Zarządzaj sygnatariuszami zastępuje akcje administratorów nazwanymi zwijanymi sekcjami do edycji wielu rejestrów w jednym zgłoszeniu i obsługuje publiczne klucze GPG, uprawnienia administratora oraz proponowanie zaufania. Istniejący rejestr zachowuje dane i adresy. Konfiguracja rejestru pozwala wyczyścić ikonę i opis. Wyniki listy pakietów zawierają nazwę wybranego rejestru i liczbę pakietów; gdy wszystkie rejestry są wyłączone, akcje oparte na CLI wskazują, aby włączyć rejestr. Usuwa akcję Konfiguruj powiadomienia o bezpieczeństwie i wyłącza istniejące ogłoszenia o aktualizacjach bezpieczeństwa systemu. Wymaga StartOS 0.4.1 lub nowszego.',
     fr_FR:
-      'Met à jour StartOS Registry vers la version 1.4.0. Les signataires enregistrés peuvent cosigner les paquets indexés sans les téléverser à nouveau. La publication, l’ajout de miroirs et la promotion des paquets acceptent les signatures supplémentaires vérifiées ; ajouter à nouveau un paquet avec une autre clé conserve sa signature. Les propositions de confiance du registre préservent les identités des signataires sélectionnés et toutes les informations de leurs clés publiques GPG. Notes de version complètes : https://github.com/Start9Labs/start-technologies/releases/tag/start-registry%2Fv1.4.0',
+      'Exécutez plusieurs registres indépendants, chacun avec ses propres adresses, paquets, paramètres et signataires. Gérer les registres crée des registres nommés avec des identifiants internes automatiques et restaure les entrées désactivées sans supprimer leurs données. Toutes les actions affichent les noms des registres ; seul Gérer les registres modifie les noms. Gérer les signataires remplace les actions des administrateurs par des sections nommées repliables pour modifier plusieurs registres en un seul envoi, avec les clés publiques GPG, les droits administrateur et les propositions de confiance. Le registre existant conserve ses données et adresses. Configurer le registre permet de vider l’icône et la description. Les résultats de la liste de paquets indiquent le registre choisi et le nombre de paquets ; si aucun registre n’est activé, les actions utilisant la CLI invitent à en activer un. Supprime l’action Configurer les notifications de sécurité et désactive les annonces de sécurité du système existantes. Nécessite StartOS 0.4.1 ou ultérieur.',
   },
   migrations: {
-    up: async ({ effects }) => {},
+    up: async ({ effects }) => {
+      await sdk.action.clearTask(effects, 'startos-registry:add-admin')
+      await sdk.action.clearTask(effects, 'startos-registry:config')
+      const registries = (await registriesJson
+        .read((s) => s.registries)
+        .once()) ?? [{ id: defaultRegistryId, port: apiPort }]
+      for (const registry of registries) {
+        const config = configYaml(registry)
+        if (await config.read().once()) {
+          await config.merge(effects, { 'security-notifications': undefined })
+        }
+      }
+    },
     down: IMPOSSIBLE,
   },
 })

@@ -1,109 +1,102 @@
+import { T } from '@start9labs/start-sdk'
 import { i18n } from '../i18n'
 import { sdk } from '../sdk'
+import {
+  RegistryInfo,
+  registryCli,
+  readRegistryInfo,
+  registryAvailabilityDescription,
+  registryUpdateWarning,
+} from '../utils'
+import { registryInput, selectedRegistry } from '../fileModels/registries.json'
 
 const { InputSpec, Value } = sdk
-
-export const inputSpec = InputSpec.of({
-  name: Value.text({
-    name: i18n('Registry Name'),
-    default: null,
-    required: true,
-    maxLength: 32,
-  }),
-  icon: Value.text({
-    name: i18n('Registry Icon'),
-    default: null,
-    required: false,
-    placeholder: 'data:image/png;base64,abc123',
-    patterns: [
-      {
-        regex:
-          '^(data:image/[a-z0-9][a-z0-9.+-]*;base64,[a-zA-Z0-9+/]*={0,2}|https?://.+)$',
-        description: i18n(
-          'Must be a valid data URL or http(s) URL (e.g. data:image/png;base64,abc123... or https://example.com/icon.png)',
-        ),
-      },
-    ],
-  }),
-  description: Value.textarea({
-    name: i18n('Registry Description'),
-    description: i18n(
-      'Shown above your services in the marketplace. Markdown is supported.',
-    ),
-    default: null,
-    required: false,
-  }),
-  // @TODO
-  // categories: Value.list(List.text({ name: 'Categories' }, { maxLength: 32 })),
-})
 
 export const config = sdk.Action.withInput(
   // id
   'config',
 
   // metadata
-  async ({ effects }) => ({
+  async () => ({
     name: i18n('Configure Registry'),
-    description: i18n('Set the name, icon, and description of your registry'),
+    description:
+      i18n('Set the icon and description of a selected registry.') +
+      ' ' +
+      registryAvailabilityDescription(),
     warning: null,
     allowedStatuses: 'only-running',
     group: null,
     visibility: 'enabled',
   }),
-
   // form input specification
-  inputSpec,
+  registryInput(async (effects, registry) => {
+    const info = await readRegistryInfo(effects, registry)
+    return InputSpec.of({
+      icon: Value.text({
+        name: i18n('Registry Icon'),
+        default: info.icon,
+        required: false,
+        description: i18n(
+          'Use a base64 image data URL or an HTTP(S) URL. Leave blank to clear the selected registry’s icon.',
+        ),
+        placeholder: 'https://example.org/registry-icon.png',
+        patterns: [
+          {
+            regex:
+              '^(data:image/[a-z0-9][a-z0-9.+-]*;base64,[a-zA-Z0-9+/]*={0,2}|https?://.+)$',
+            description: i18n(
+              'Enter a base64 image data URL or an HTTP(S) URL.',
+            ),
+          },
+        ],
+      }),
+      description: Value.textarea({
+        name: i18n('Registry Description'),
+        description:
+          i18n(
+            'Shown above the selected registry’s packages in the marketplace. Markdown is supported. Leave blank to clear the description in all languages.',
+          ) +
+          ' ' +
+          registryUpdateWarning(),
+        default: descriptionText(info.description),
+        required: false,
+      }),
+      // @TODO
+      // categories: Value.list(List.text({ name: 'Categories' }, { maxLength: 32 })),
+    })
+  }),
 
   // optionally pre-fill the input form
-  async ({ effects }) => {
-    const { name, icon, description } = await sdk.SubContainer.withTemp<{
-      name: string
-      icon: string | null
-      description?: string | Record<string, string> | null
-      // @TODO
-      // categories: Record<string, { name: string }>
-    }>(
-      effects,
-      { imageId: 'startos-registry', sharedRun: true },
-      null,
-      'get-info',
-      async (sub) =>
-        JSON.parse(
-          (await sub.execFail(['start-registry', 'info', '--format=json']))
-            .stdout as string,
-        ),
-    )
-
-    return {
-      name,
-      icon,
-      description:
-        typeof description === 'string'
-          ? description
-          : (description?.en_US ?? Object.values(description ?? {})[0] ?? null),
-    }
-  },
+  async () => null,
 
   // the execution function
-  async ({ effects, input: { name, icon, description } }) =>
-    sdk.SubContainer.withTemp(
-      effects,
-      { imageId: 'startos-registry', sharedRun: true },
-      null,
-      'set-info',
-      async (sub) => {
-        await sub.execFail(['start-registry', 'info', 'set-name', name])
-        if (icon) {
-          await sub.execFail(['start-registry', 'info', 'set-icon', icon])
-        }
-        if (description) {
-          await sub.execFail([
-            'start-registry',
-            'info',
-            'set-description',
-            description,
-          ])
-        }
-      },
-    ),
+  async ({ effects, input, spec }) => {
+    const registry = {
+      ...(await selectedRegistry(input.registry.selection)),
+      name: (spec.registry as T.inputSpecTypes.ValueSpecUnion).variants[
+        input.registry.selection
+      ].name,
+    }
+    const { icon, description } = input.registry.value
+    const nextDescription = description?.trim() ? description : null
+    const info = await readRegistryInfo(effects, registry)
+    await registryCli(effects, registry, [
+      'info',
+      'set-icon',
+      ...(icon ? ['--', icon] : ['--clear']),
+    ])
+    if (nextDescription !== descriptionText(info.description)) {
+      await registryCli(effects, registry, [
+        'info',
+        'set-description',
+        ...(nextDescription ? ['--', nextDescription] : ['--clear']),
+      ])
+    }
+  },
 )
+
+function descriptionText(description: RegistryInfo['description']) {
+  return typeof description === 'string'
+    ? description
+    : (description?.en_US ?? Object.values(description ?? {})[0] ?? null)
+}
