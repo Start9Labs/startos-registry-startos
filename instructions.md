@@ -8,7 +8,7 @@
 
 - Independent registries with separate **Web API** addresses, package catalogs, signers, and permissions.
 - **Manage Registries** for names and enabled state, **Configure Registry** for a selected registry's icon and description, and **Manage Signers** for signer access across enabled registries.
-- Publish and curate package catalogs from a workstation with `start-cli`; the service does not expose a separate registry web application.
+- Publish and curate package catalogs from a workstation with `start-cli`; opening a registry's Web API address in a browser redirects to the public Marketplace with that registry selected, rather than a separate registry web application.
 
 ## Getting set up
 
@@ -68,4 +68,4 @@ The second command grants all versions by default; use `--versions` to constrain
 
 To subscribe another StartOS server, add the chosen Web API address as a registry source. **List Packages** selects an enabled registry and returns its name, package count, and alphabetical package titles. A result with count zero identifies the selected registry and says its catalog is empty.
 
-If you use a separate reverse proxy, forward the registry's entire API origin, including RPC, WebSocket, icon, and download traffic. If you publish through a tunnel to keep your home IP private, send outbound traffic through that tunnel too; remote registries and sites the service fetches from can otherwise see your home IP.
+If you use a separate reverse proxy, forward the registry's entire API origin, including `/`, RPC, WebSocket, icon, and download traffic. Preserve the public `Host` header and set `X-Forwarded-Proto` to the public scheme (`http` or `https`) so the Marketplace redirect selects the correct registry address. If you publish through a tunnel to keep your home IP private, send outbound traffic through that tunnel too; remote registries and sites the service fetches from can otherwise see your home IP.

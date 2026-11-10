@@ -78,7 +78,7 @@ Each active registry has an independent API interface on its own MultiHost. The 
 | `default` | `api-multi`     | `api`           | 5959                                                           |
 | Other IDs | `registry-<id>` | `registry-<id>` | Allocated monotonically above 5959; persisted in the inventory |
 
-The interfaces serve registry RPC, assets, icons, and WebSocket routes. They are unmasked APIs, not browser UIs. Hostnames from one registry are never added to another registry's accepted signing identities.
+The interfaces serve registry RPC, assets, icons, and WebSocket routes. They are unmasked APIs, not hosted browser UIs; opening an interface's root URL redirects to the public Marketplace with that registry selected. Hostnames from one registry are never added to another registry's accepted signing identities.
 
 ## Installation and First-Run Flow
 
