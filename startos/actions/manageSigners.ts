@@ -314,16 +314,34 @@ async function reconcileSigners(
       throw registryError(registry, error, signer.name)
     }
   }
-  const removedKeys = new Set<string>()
+  const keyRemovals = new Map(
+    Object.entries(current.signers).map(([id, signer]) => {
+      const record = imported[id]
+      if (!record) throw registryError(registry, changedError, signer.name)
+      const removed = record.keys.filter((key) => !wanted.get(id)?.has(key))
+      return [id, removed] as const
+    }),
+  )
+  const retainedKeys = new Set(
+    [...wanted.values()].flatMap((keys) => [...keys]),
+  )
+  // Keys retained by any signer must retain their indexed package signatures.
+  for (const [id, keys] of keyRemovals) {
+    if (keys.some((key) => retainedKeys.has(key)))
+      throw registryError(
+        registry,
+        i18n(
+          'Cannot remove a shared key or its signer while another signer retains that key. Cancel that removal to preserve its indexed package signatures.',
+        ),
+        current.signers[id].name,
+      )
+  }
   for (const signer of desired) {
     const id = signer.id!
     const previous = current.signers[id]
     if (previous) {
       const contacts = previous.contact.map(contactToUrl)
-      const removed = imported[id].keys.filter(
-        (key) => !wanted.get(id)!.has(key),
-      )
-      for (const key of removed) removedKeys.add(key)
+      const removed = keyRemovals.get(id)!
       const args = [
         ...removed.map((key) => `--remove-key=${key}`),
         ...(signer.name === previous.name ? [] : [`--set-name=${signer.name}`]),
@@ -377,29 +395,6 @@ async function reconcileSigners(
       ['admin', 'signer', 'remove', id],
       current.signers[id].name,
     )
-  }
-  if (desired.length && (removedKeys.size || removedSigners.length)) {
-    const remaining = await readSigners(effects, registry)
-    for (const signer of desired) {
-      const record = remaining[signer.id!]
-      if (!record) throw registryError(registry, changedError, signer.name)
-      const missing = [...wanted.get(signer.id!)!].filter(
-        (key) => !record.keys.includes(key),
-      )
-      if (missing.length)
-        await registryCli(
-          effects,
-          registry,
-          [
-            'admin',
-            'signer',
-            'edit',
-            signer.id!,
-            ...missing.map((key) => `--add-key=${pemPublicKey(key)}`),
-          ],
-          signer.name,
-        )
-    }
   }
 }
 
