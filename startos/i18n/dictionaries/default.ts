@@ -3,6 +3,7 @@ export const DEFAULT_LANG = 'en_US'
 const dict = {
   'Cannot remove a shared key or its signer while another signer retains that key. Cancel that removal to preserve its indexed package signatures.': 97,
   'Could not resolve the imported GPG signing keys. Reopen the action and try again.': 96,
+  'Paste the GPG key with its original line breaks.': 98,
   '${registry}: ${message}': 91,
   '${registry} / ${signer}: ${message}': 92,
   'Signer row ${position}': 93,
