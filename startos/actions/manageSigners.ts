@@ -504,7 +504,20 @@ function signingKeys(blocks: string[], signer: Signer) {
 
 function parsePublicKeys(value: string) {
   const pattern = new RegExp(keyBlockPattern, 'g')
-  const keys = [...value.matchAll(pattern)].map((match) => match[0])
+  const keys = [...value.matchAll(pattern)].map(([block, label]) => {
+    const body = block.slice(`-----BEGIN ${label}-----`.length)
+    if (label !== 'PUBLIC KEY') {
+      if (!/^[ \t]*\r?\n/.test(body))
+        throw new Error(
+          i18n('Paste the GPG key with its original line breaks.'),
+        )
+      return block
+    }
+    const base64 = body
+      .slice(0, -`-----END ${label}-----`.length)
+      .replace(/\s+/g, '')
+    return pemPublicKey(base64.match(/.{1,64}/g)?.join('\n') ?? '')
+  })
   if (value.replace(pattern, '').trim()) throw new Error(publicKeyError)
   return keys
 }
