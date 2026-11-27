@@ -2,6 +2,7 @@ import { LangDict } from './default'
 
 export default {
   es_ES: {
+    98: 'Pega la clave GPG con sus saltos de línea originales.',
     97: 'No se puede quitar una clave compartida ni su firmante mientras otro firmante conserve esa clave. Cancela esa eliminación para conservar sus firmas de paquetes en el índice.',
     96: 'No se pudieron resolver las claves de firma GPG importadas. Vuelve a abrir la acción e inténtalo de nuevo.',
     91: '${registry}: ${message}',
@@ -66,6 +67,7 @@ export default {
     90: 'Usa una URL de datos de imagen en base64 o una URL HTTP(S). Deja el campo vacío para borrar el icono del registro seleccionado.',
   },
   de_DE: {
+    98: 'Den GPG-Schlüssel mit seinen ursprünglichen Zeilenumbrüchen einfügen.',
     97: 'Ein gemeinsam genutzter Schlüssel oder sein Unterzeichner kann nicht entfernt werden, solange ein anderer Unterzeichner den Schlüssel behält. Das Entfernen abbrechen, um seine Paketsignaturen im Index zu erhalten.',
     96: 'Die importierten GPG-Signaturschlüssel konnten nicht ermittelt werden. Die Aktion erneut öffnen und wiederholen.',
     91: '${registry}: ${message}',
@@ -130,6 +132,7 @@ export default {
     90: 'Eine Base64-Bild-Daten-URL oder HTTP(S)-URL verwenden. Leer lassen, um das Symbol der ausgewählten Registry zu löschen.',
   },
   pl_PL: {
+    98: 'Wklej klucz GPG z jego oryginalnymi podziałami wierszy.',
     97: 'Nie można usunąć współdzielonego klucza ani jego sygnatariusza, gdy inny sygnatariusz zachowuje ten klucz. Anuluj to usunięcie, aby zachować jego podpisy pakietów w indeksie.',
     96: 'Nie udało się ustalić zaimportowanych kluczy podpisu GPG. Otwórz akcję ponownie i spróbuj jeszcze raz.',
     91: '${registry}: ${message}',
@@ -194,6 +197,7 @@ export default {
     90: 'Użyj adresu URL danych obrazu w base64 lub adresu HTTP(S). Pozostaw puste, aby usunąć ikonę wybranego rejestru.',
   },
   fr_FR: {
+    98: 'Collez la clé GPG avec ses sauts de ligne d’origine.',
     97: 'Impossible de retirer une clé partagée ou son signataire tant qu’un autre signataire conserve cette clé. Annulez ce retrait pour préserver ses signatures de paquets dans l’index.',
     96: 'Impossible de déterminer les clés de signature GPG importées. Rouvrez l’action et réessayez.',
     91: '${registry}: ${message}',
